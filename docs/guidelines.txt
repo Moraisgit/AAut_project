@@ -1,0 +1,44 @@
+submission
+zip file with
+- python code
+- y hat -test numpy vector
+
+x_train.numpy
+x_train 200x5
+
+y_train.npy is the output for the training data x_train.npy
+
+x_text.npy we should not use, we only use to compute the predictions of the model we believe is the best one
+
+
+we need to worry about outlier removal and regularization techniques
+
+
+information about the outliers:
+- we are told the aprox %, 25% of the data are outliers, noise
+- we only have outliers in y, noise in x is negligeble
+
+regularization techniques:
+- lasso
+- ridge
+- ...
+
+we have to try different outlier removal techniques and regularization techniques (to make the best model)
+
+how to choose the best model:
+- instead of using the entire training set we take a bit of the training set to make a validation set and evaluate the model
+
+maybe: training set -> 150x5
+        validation set -> 50x5
+
+
+we can plot data like y in function of x OR y in function of the index (i)
+
+if we identifie an outlier we need to remove both in x and y_train
+
+the validation set might also have outliers so we also need to remove them
+
+we cant identifie outliers just by looking at y values (big values)
+
+
+first we remove outliers, then we split training data in train and validation, and then we 
