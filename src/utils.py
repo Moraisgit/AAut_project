@@ -1,5 +1,7 @@
 import os
 import numpy as np
+from colorama import init, Fore
+
 
 def load_data(filename: str) -> np.ndarray:
     """
@@ -41,7 +43,30 @@ def get_absolute_path(file_name: str) -> str:
         return file_path
     else:
         raise FileNotFoundError(f"{file_name} not found in {data_dir}")
+
+
+def save_npy_to_output(file_name, data):
+    # Initialize colorama
+    init()
+    # Get the project root directory
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     
+    # Construct the path to the 'output' directory
+    output_dir = os.path.join(project_root, "output")
+    
+    # Ensure the output directory exists
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    # Construct the full file path
+    file_path = os.path.join(output_dir, file_name)
+    
+    # Save the .npy file
+    np.save(file_path, data)
+    
+    # Print the file path with color
+    print(f"File saved at: {Fore.GREEN}{file_path}{Fore.RESET}")
+
 
 def get_plot_save_path(image_name: str) -> str:
     """
