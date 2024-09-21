@@ -1,15 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
-from colorama import init as colorama_init
-from colorama import Fore, Style
+from colorama import Fore
 from typing import Tuple
-from sklearn.linear_model import ElasticNetCV, LassoCV, RidgeCV, RANSACRegressor, LinearRegression
+from sklearn.linear_model import (
+    ElasticNetCV,
+    LassoCV,
+    RidgeCV,
+    RANSACRegressor,
+    LinearRegression,
+)
 from utils import get_absolute_path, load_data, get_plot_save_path, save_npy_to_output
 from sklearn.model_selection import train_test_split
 
-def generate_train_validation_data(X_train: np.ndarray, y_train: np.ndarray) -> np.ndarray:
+
+def generate_train_validation_data(
+    X_train: np.ndarray, y_train: np.ndarray
+) -> np.ndarray:
     """
     Split the training data into training and validation sets.
 
@@ -18,7 +25,7 @@ def generate_train_validation_data(X_train: np.ndarray, y_train: np.ndarray) -> 
     y_train (np.ndarray): The target labels corresponding to X_train.
 
     Returns:
-    tuple: Four elements: 
+    tuple: Four elements:
         - X_train_split (np.ndarray): Training features after the split.
         - X_validation_split (np.ndarray): Validation features after the split.
         - y_train_split (np.ndarray): Training labels after the split.
@@ -37,8 +44,12 @@ def generate_train_validation_data(X_train: np.ndarray, y_train: np.ndarray) -> 
 
     # Print the shapes of the split data
     print("Split shapes:")
-    print(f"\tX_train_split: {Fore.CYAN}{X_train_split.shape}{Fore.RESET}, y_train_split: {Fore.CYAN}{y_train_split.shape}{Fore.RESET}")
-    print(f"\tX_validation_split: {Fore.MAGENTA}{X_validation_split.shape}{Fore.RESET}, y_validation_split: {Fore.MAGENTA}{y_validation_split.shape}{Fore.RESET}")
+    print(
+        f"\tX_train_split: {Fore.CYAN}{X_train_split.shape}{Fore.RESET}, y_train_split: {Fore.CYAN}{y_train_split.shape}{Fore.RESET}"
+    )
+    print(
+        f"\tX_validation_split: {Fore.MAGENTA}{X_validation_split.shape}{Fore.RESET}, y_validation_split: {Fore.MAGENTA}{y_validation_split.shape}{Fore.RESET}"
+    )
     # Return the split datasets
     return X_train_split, X_validation_split, y_train_split, y_validation_split
 
@@ -86,7 +97,7 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
 
     Parameters:
     X_train (np.ndarray): The training data with features to be plotted.
-    individual_plots (bool): If True, save individual plots for each feature; 
+    individual_plots (bool): If True, save individual plots for each feature;
                              if False, create subplots for all features.
 
     Returns:
@@ -94,7 +105,7 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
     """
     # Sample range corresponding to the number of rows in X_train
     samples = np.arange(0, X_train.shape[0], 1)
-    
+
     # Titles for each feature plot
     titles_X = [
         "Daily Averages of Air Temperature (x1)",
@@ -117,7 +128,7 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
             plt.xlabel("Sample Index")  # X-axis label
             plt.ylabel("Value")  # Y-axis label
             plt.grid(True)  # Add gridlines for better readability
-            
+
             # Save each plot separately using the image name
             plt.savefig(get_plot_save_path(image_name=f"plot_{i+1}.png"))
             plt.close()  # Close the plot after saving to free up memory
@@ -160,7 +171,11 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
 
 
 def regression(
-    X_train: np.ndarray, y_train: np.ndarray, X_validation: np.ndarray, y_validation: np.ndarray, regression_technique: str
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_validation: np.ndarray,
+    y_validation: np.ndarray,
+    regression_technique: str,
 ) -> Tuple[float, np.ndarray]:
     """
     Perform Ridge regression using scikit-learn's Ridge model.
@@ -175,23 +190,41 @@ def regression(
     intercept (float): The intercept term for the Ridge regression.
     """
     if regression_technique == "ElasticNetCV":
-        regression = ElasticNetCV(alphas = [0.0001, 0.001, 0.01, 0.1, 1, 5, 10], random_state=42, max_iter=3000, fit_intercept=True).fit(X=X_train, y=y_train)
+        regression = ElasticNetCV(
+            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10],
+            random_state=42,
+            max_iter=3000,
+            fit_intercept=True,
+        ).fit(X=X_train, y=y_train)
     elif regression_technique == "RidgeCV":
-        regression = RidgeCV(alphas = [0.0001, 0.001, 0.01, 0.1, 1, 5, 10], fit_intercept=True).fit(X=X_train, y=y_train)
+        regression = RidgeCV(
+            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10], fit_intercept=True
+        ).fit(X=X_train, y=y_train)
     elif regression_technique == "LassoCV":
-        regression = LassoCV(alphas = [0.0001, 0.001, 0.01, 0.1, 1, 5, 10], random_state=42, max_iter=3000, fit_intercept=True).fit(X=X_train, y=y_train)
-    
+        regression = LassoCV(
+            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10],
+            random_state=42,
+            max_iter=3000,
+            fit_intercept=True,
+        ).fit(X=X_train, y=y_train)
+
     train_score = regression.score(X=X_train, y=y_train)
     validation_score = regression.score(X=X_validation, y=y_validation)
     # Printing with colors
     print("\nUsing " + Fore.YELLOW + regression_technique + Fore.RESET + ":")
     print("\tThe train score is: {}{}{}".format(Fore.GREEN, train_score, Fore.RESET))
-    print("\tThe validation score is: {}{}{}".format(Fore.BLUE, validation_score, Fore.RESET))
+    print(
+        "\tThe validation score is: {}{}{}".format(
+            Fore.BLUE, validation_score, Fore.RESET
+        )
+    )
 
     return regression.intercept_, regression.coef_
 
 
-def toxic_algae_model(X_new: np.ndarray, intercept: float, coefs: np.ndarray) -> np.ndarray:
+def toxic_algae_model(
+    X_new: np.ndarray, intercept: float, coefs: np.ndarray
+) -> np.ndarray:
     """
     Predict the target values based on the linear regression model.
 
@@ -211,27 +244,33 @@ def toxic_algae_model(X_new: np.ndarray, intercept: float, coefs: np.ndarray) ->
 
 def main():
     # Our output will be compared with the teachers output using SSE metric
-    X_test = load_data(filename=get_absolute_path("X_test.npy"))  # Test data for the model
-    y_train = load_data(filename=get_absolute_path("y_train.npy"))  # Expected output for the training data
-    X_train = load_data(filename=get_absolute_path("X_train.npy"))  # Training data for the model
+    X_test = load_data(
+        filename=get_absolute_path("X_test.npy")
+    )  # Test data for the model
+    y_train = load_data(
+        filename=get_absolute_path("y_train.npy")
+    )  # Expected output for the training data
+    X_train = load_data(
+        filename=get_absolute_path("X_train.npy")
+    )  # Training data for the model
 
     X_clean, y_clean = remove_outliers_with_ransac(X_train=X_train, y_train=y_train)
-    
+
     plot_training_data(X_train=X_clean, individual_plots=True)
 
-    X_train_split, X_validation_split, y_train_split, y_validation_split = generate_train_validation_data(
-        X_train=X_clean,
-        y_train=y_clean
+    X_train_split, X_validation_split, y_train_split, y_validation_split = (
+        generate_train_validation_data(X_train=X_clean, y_train=y_clean)
     )
 
     regression_techniques = ["RidgeCV", "LassoCV", "ElasticNetCV"]
 
     # Estimate coefficients using Ridge regression
-    intercept, coefficients = regression(X_train=X_train_split, 
-        y_train=y_train_split, 
-        X_validation=X_validation_split, 
+    intercept, coefficients = regression(
+        X_train=X_train_split,
+        y_train=y_train_split,
+        X_validation=X_validation_split,
         y_validation=y_validation_split,
-        regression_technique=regression_techniques[0]
+        regression_technique=regression_techniques[0],
     )
 
     # Print the results

@@ -15,6 +15,7 @@ def load_data(filename: str) -> np.ndarray:
     """
     return np.load(file=filename)
 
+
 def get_absolute_path(file_name: str) -> str:
     """
     Generate the absolute path for a file located in the 'data' directory.
@@ -30,14 +31,14 @@ def get_absolute_path(file_name: str) -> str:
     FileNotFoundError: If the specified file does not exist in the 'data' directory.
     """
     # Get the project root directory
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
     # Construct the path to the 'data' directory
     data_dir = os.path.join(project_root, "data")
-    
+
     # Construct the full file path
     file_path = os.path.join(data_dir, file_name)
-    
+
     # Check if the file exists
     if os.path.exists(file_path):
         return file_path
@@ -49,21 +50,21 @@ def save_npy_to_output(file_name, data):
     # Initialize colorama
     init()
     # Get the project root directory
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
     # Construct the path to the 'output' directory
     output_dir = os.path.join(project_root, "output")
-    
+
     # Ensure the output directory exists
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    
+
     # Construct the full file path
     file_path = os.path.join(output_dir, file_name)
-    
+
     # Save the .npy file
     np.save(file_path, data)
-    
+
     # Print the file path with color
     print(f"File saved at: {Fore.GREEN}{file_path}{Fore.RESET}")
 
@@ -80,15 +81,15 @@ def get_plot_save_path(image_name: str) -> str:
     str: The absolute path to the specified image file in the 'plots' directory.
     """
     # Get the project root directory
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
     # Construct the path to the 'plots' directory
     plots_dir = os.path.join(project_root, "plots")
-    
+
     # Construct the full file path
     file_path = os.path.join(plots_dir, image_name)
-    
+
     # Create the plots directory if it doesn't exist
     os.makedirs(plots_dir, exist_ok=True)
-    
+
     return file_path
