@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 
 def generate_train_validation_data(
     X_train: np.ndarray, y_train: np.ndarray
-) -> np.ndarray:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Split the training data into training and validation sets.
 
@@ -25,11 +25,11 @@ def generate_train_validation_data(
     y_train (np.ndarray): The target labels corresponding to X_train.
 
     Returns:
-    tuple: Four elements:
-        - X_train_split (np.ndarray): Training features after the split.
-        - X_validation_split (np.ndarray): Validation features after the split.
-        - y_train_split (np.ndarray): Training labels after the split.
-        - y_validation_split (np.ndarray): Validation labels after the split.
+    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: 
+        - X_train_split: Training features after the split.
+        - X_validation_split: Validation features after the split.
+        - y_train_split: Training labels after the split.
+        - y_validation_split: Validation labels after the split.
     """
     # Split the data into training and validation sets
     X_train_split, X_validation_split, y_train_split, y_validation_split = (
@@ -50,29 +50,30 @@ def generate_train_validation_data(
     print(
         f"\tX_validation_split: {Fore.MAGENTA}{X_validation_split.shape}{Fore.RESET}, y_validation_split: {Fore.MAGENTA}{y_validation_split.shape}{Fore.RESET}"
     )
-    # Return the split datasets
+
     return X_train_split, X_validation_split, y_train_split, y_validation_split
 
 
-def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray):
+def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use RANSAC to fit a model and remove outliers from the dataset.
 
     Parameters:
-    X (np.ndarray): The independent variables (features).
-    y (np.ndarray): The dependent variable (target).
+    X_train (np.ndarray): The independent variables (features).
+    y_train (np.ndarray): The dependent variable (target).
 
     Returns:
-    X_inliers (np.ndarray): The filtered independent variables without outliers.
-    y_inliers (np.ndarray): The filtered dependent variable without outliers.
-    X_outliers (np.ndarray): The outlier independent variables.
-    y_outliers (np.ndarray): The outlier dependent variables.
+    Tuple[np.ndarray, np.ndarray]: 
+        - X_inliers: The filtered independent variables without outliers.
+        - y_inliers: The filtered dependent variable without outliers.
+        - X_outliers: The outlier independent variables.
+        - y_outliers: The outlier dependent variables.
     """
     # Create the RANSAC model with a base estimator (e.g., LinearRegression)
-    ransac = RANSACRegressor(LinearRegression(), random_state=0)
+    ransac = RANSACRegressor(estimator=LinearRegression(), random_state=0)
 
-    # Fit the RANSAC model to the data
-    ransac.fit(X_train, y_train)
+    # Fit the RANSAC model to the training data
+    ransac.fit(X=X_train, y=y_train)
 
     # Get a mask of inliers and outliers
     inlier_mask = ransac.inlier_mask_  # True for inliers, False for outliers
@@ -83,7 +84,7 @@ def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray):
     X_outliers = X_train[~inlier_mask]
     # y_outliers = y_train[~inlier_mask]
 
-    # Print some stats
+    # Print statistics about inliers and outliers
     print(f"Number of inliers: {Fore.GREEN}{len(X_inliers)}{Fore.RESET}")
     print(f"Number of outliers: {Fore.RED}{len(X_outliers)}{Fore.RESET}")
     print()
@@ -104,7 +105,7 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
     None: This function saves the plots to files and does not return any value.
     """
     # Sample range corresponding to the number of rows in X_train
-    samples = np.arange(0, X_train.shape[0], 1)
+    samples = np.arange(start=0, stop=X_train.shape[0], step=1)
 
     # Titles for each feature plot
     titles_X = [
@@ -123,11 +124,11 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
         # Save individual plots for each feature
         for i in range(5):
             plt.figure(figsize=(6, 4))  # Create a new figure for each plot
-            plt.scatter(samples, X_train[:, i], color="blue", s=10)  # Scatter plot
-            plt.title(titles_X[i])  # Set the title for the plot
-            plt.xlabel("Sample Index")  # X-axis label
-            plt.ylabel("Value")  # Y-axis label
-            plt.grid(True)  # Add gridlines for better readability
+            plt.scatter(x=samples, y=X_train[:, i], color="blue", s=10)  # Scatter plot
+            plt.title(label=titles_X[i])  # Set the title for the plot
+            plt.xlabel(xlabel="Sample Index")  # X-axis label
+            plt.ylabel(ylabel="Value")  # Y-axis label
+            plt.grid(visible=True)  # Add gridlines for better readability
 
             # Save each plot separately using the image name
             plt.savefig(get_plot_save_path(image_name=f"plot_{i+1}.png"))
@@ -137,9 +138,9 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
         print()
     else:
         # Create subplots for all features in a specified layout
-        figure, axis = plt.subplots(3, 2, figsize=(12, 10))  # 3 rows and 2 columns
+        figure, axis = plt.subplots(nrows=3, ncols=2, figsize=(12, 10))  # 3 rows and 2 columns
         figure.suptitle(
-            "Scatter plots of the independent variables after IQR outlier removal",
+            t="Scatter plots of the independent variables after IQR outlier removal",
             fontsize=16,
         )
         plt.subplots_adjust(hspace=0.4, wspace=0.3)  # Adjust spacing between plots
@@ -155,7 +156,7 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
             axis[row, col].grid(True)  # Add gridlines for better readability
 
         # Remove the unused subplot (axis[2,1])
-        figure.delaxes(axis[2, 1])
+        figure.delaxes(ax=axis[2, 1])
 
         # Plot the last figure (centered in the last row)
         axis[2, 0].scatter(samples, X_train[:, 4], color="blue", s=10)
@@ -178,17 +179,19 @@ def regression(
     regression_technique: str,
 ) -> Tuple[float, np.ndarray]:
     """
-    Perform Ridge regression using scikit-learn's Ridge model.
+    Perform regression using a specified regression technique.
 
     Parameters:
-    X_train (np.ndarray): The independent variables.
-    y_train (np.ndarray): The dependent variable.
-    alpha (float): The regularization parameter
+    X_train (np.ndarray): The independent variables for training.
+    y_train (np.ndarray): The dependent variable for training.
+    X_validation (np.ndarray): The independent variables for validation.
+    y_validation (np.ndarray): The dependent variable for validation.
+    regression_technique (str): The regression technique to use ('ElasticNetCV', 'RidgeCV', or 'LassoCV').
 
     Returns:
-    coefs (np.ndarray): Coefficients for each feature after Ridge regression.
-    intercept (float): The intercept term for the Ridge regression.
+    Tuple[float, np.ndarray]: The intercept term and coefficients for each feature after regression.
     """
+    # Initialize the regression model based on the specified technique
     if regression_technique == "ElasticNetCV":
         regression = ElasticNetCV(
             alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10],
@@ -207,10 +210,14 @@ def regression(
             max_iter=3000,
             fit_intercept=True,
         ).fit(X=X_train, y=y_train)
+    else:
+        raise ValueError("Invalid regression technique. Choose 'ElasticNetCV', 'RidgeCV', or 'LassoCV'.")
 
+    # Calculate training and validation scores
     train_score = regression.score(X=X_train, y=y_train)
     validation_score = regression.score(X=X_validation, y=y_validation)
-    # Printing with colors
+
+    # Print the scores with color formatting
     print("\nUsing " + Fore.YELLOW + regression_technique + Fore.RESET + ":")
     print("\tThe train score is: {}{}{}".format(Fore.GREEN, train_score, Fore.RESET))
     print(
@@ -223,26 +230,30 @@ def regression(
 
 
 def toxic_algae_model(
-    X_new: np.ndarray, intercept: float, coefs: np.ndarray
+    X_test: np.ndarray, intercept: float, coefs: np.ndarray
 ) -> np.ndarray:
     """
     Predict the target values based on the linear regression model.
 
     Parameters:
-    X_new (np.ndarray): New data points (n_samples, n_features).
+    X_test (np.ndarray): New data points (n_samples, n_features).
     intercept (float): The intercept term from the model.
     coefs (np.ndarray): The coefficients (slopes) for each feature from the model.
 
     Returns:
-    y_pred (np.ndarray): Predicted target values.
+    np.ndarray: Predicted target values.
     """
     # Calculate the predicted values: ŷ = β0 + Σ (βi * Xi)
-    y_pred = intercept + np.dot(X_new, coefs)
+    y_pred = intercept + np.dot(X_test, coefs)
 
     return y_pred
 
 
 def main():
+    """
+    Main function to execute the workflow for training and evaluating the model.
+    It handles loading data, removing outliers, splitting data, and fitting a regression model.
+    """
     # Our output will be compared with the teachers output using SSE metric
     X_test = load_data(
         filename=get_absolute_path("X_test.npy")
@@ -254,14 +265,18 @@ def main():
         filename=get_absolute_path("X_train.npy")
     )  # Training data for the model
 
+    # Remove outliers from training data
     X_clean, y_clean = remove_outliers_with_ransac(X_train=X_train, y_train=y_train)
 
+    # Plot the cleaned training data
     plot_training_data(X_train=X_clean, individual_plots=True)
 
+    # Split the cleaned data into training and validation sets
     X_train_split, X_validation_split, y_train_split, y_validation_split = (
         generate_train_validation_data(X_train=X_clean, y_train=y_clean)
     )
 
+    # Define regression techniques that can be used
     regression_techniques = ["RidgeCV", "LassoCV", "ElasticNetCV"]
 
     # Estimate coefficients using Ridge regression
@@ -278,8 +293,11 @@ def main():
     print(f"\tIntercept: {Fore.GREEN}{intercept}{Fore.RESET}")
     print(f"\tCoefficients: {Fore.GREEN}{coefficients}{Fore.RESET}\n")
 
-    y_pred = toxic_algae_model(X_test, intercept, coefficients)
-    save_npy_to_output("y_pred.npy", y_pred)
+    # Predict using the trained model
+    y_pred = toxic_algae_model(X_test=X_test, intercept=intercept, coefs=coefficients)
+
+    # Save the predictions to a file
+    save_npy_to_output(file_name="y_pred.npy", data=y_pred)
 
 
 if __name__ == "__main__":
