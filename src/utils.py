@@ -66,7 +66,7 @@ def save_npy_to_output(file_name, data):
     np.save(file_path, data)
 
     # Print the file path with color
-    print(f"File saved at: {Fore.GREEN}{file_path}{Fore.RESET}")
+    print(f"File saved at: {Fore.BLUE}{file_path}{Fore.RESET}")
 
 
 def get_plot_save_path(image_name: str) -> str:
@@ -81,7 +81,7 @@ def get_plot_save_path(image_name: str) -> str:
     str: The absolute path to the specified image file in the 'plots' directory.
     """
     # Get the project root directory
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    project_root = os.path.abspath(path=os.path.join(os.path.dirname(__file__), ".."))
 
     # Construct the path to the 'plots' directory
     plots_dir = os.path.join(project_root, "plots")

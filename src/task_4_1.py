@@ -45,10 +45,10 @@ def generate_train_validation_data(
     # Print the shapes of the split data
     print("Split shapes:")
     print(
-        f"\tX_train_split: {Fore.CYAN}{X_train_split.shape}{Fore.RESET}, y_train_split: {Fore.CYAN}{y_train_split.shape}{Fore.RESET}"
+        f"\tX_train_split: {Fore.BLUE}{X_train_split.shape}{Fore.RESET}, y_train_split: {Fore.BLUE}{y_train_split.shape}{Fore.RESET}"
     )
     print(
-        f"\tX_validation_split: {Fore.MAGENTA}{X_validation_split.shape}{Fore.RESET}, y_validation_split: {Fore.MAGENTA}{y_validation_split.shape}{Fore.RESET}"
+        f"\tX_validation_split: {Fore.BLUE}{X_validation_split.shape}{Fore.RESET}, y_validation_split: {Fore.BLUE}{y_validation_split.shape}{Fore.RESET}"
     )
 
     return X_train_split, X_validation_split, y_train_split, y_validation_split
@@ -70,7 +70,7 @@ def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tup
         - y_outliers: The outlier dependent variables.
     """
     # Create the RANSAC model with a base estimator (e.g., LinearRegression)
-    ransac = RANSACRegressor(estimator=LinearRegression(), random_state=0)
+    ransac = RANSACRegressor(estimator=LinearRegression())
 
     # Fit the RANSAC model to the training data
     ransac.fit(X=X_train, y=y_train)
@@ -85,11 +85,106 @@ def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tup
     # y_outliers = y_train[~inlier_mask]
 
     # Print statistics about inliers and outliers
-    print(f"Number of inliers: {Fore.GREEN}{len(X_inliers)}{Fore.RESET}")
-    print(f"Number of outliers: {Fore.RED}{len(X_outliers)}{Fore.RESET}")
+    print(f"Number of inliers: {Fore.BLUE}{len(X_inliers)}{Fore.RESET}")
+    print(f"Number of outliers: {Fore.BLUE}{len(X_outliers)}{Fore.RESET}")
     print()
 
     return X_inliers, y_inliers
+
+
+def regression(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_validation: np.ndarray,
+    y_validation: np.ndarray,
+    regression_technique: str,
+) -> Tuple[float, np.ndarray]:
+    """
+    Perform regression using a specified regression technique.
+
+    Parameters:
+    X_train (np.ndarray): The independent variables for training.
+    y_train (np.ndarray): The dependent variable for training.
+    X_validation (np.ndarray): The independent variables for validation.
+    y_validation (np.ndarray): The dependent variable for validation.
+    regression_technique (str): The regression technique to use ('ElasticNetCV', 'RidgeCV', or 'LassoCV').
+
+    Returns:
+    Tuple[float, np.ndarray]: The intercept term and coefficients for each feature after regression.
+    """
+    # Initialize the regression model based on the specified technique
+    if regression_technique == "ElasticNetCV":
+        regression = ElasticNetCV(
+            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10],
+            random_state=42,
+            max_iter=3000,
+            l1_ratio= [0.1, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1],
+            fit_intercept=True,
+        ).fit(X=X_train, y=y_train)
+    elif regression_technique == "RidgeCV":
+        regression = RidgeCV(
+            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10], 
+            fit_intercept=True
+        ).fit(X=X_train, y=y_train)
+    elif regression_technique == "LassoCV":
+        regression = LassoCV(
+            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10],
+            random_state=42,
+            max_iter=3000,
+            fit_intercept=True,
+        ).fit(X=X_train, y=y_train)
+    else:
+        raise ValueError("Invalid regression technique. Choose 'ElasticNetCV', 'RidgeCV', or 'LassoCV'.")
+
+    # Calculate training and validation scores
+    train_score = regression.score(X=X_train, y=y_train)
+    validation_score = regression.score(X=X_validation, y=y_validation)
+
+    # Print the scores with color formatting
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + regression_technique + Fore.RESET + ":")
+    print("\tThe train score is (R²): {}{}{}".format(Fore.BLUE, train_score, Fore.RESET))
+    print(
+        "\tThe validation score is (R²): {}{}{}".format(
+            Fore.BLUE, validation_score, Fore.RESET
+        )
+    )
+
+    return regression.intercept_, regression.coef_
+
+
+def toxic_algae_model(
+    X_test: np.ndarray, intercept: float, coefs: np.ndarray
+) -> np.ndarray:
+    """
+    Predict the target values based on the linear regression model.
+
+    Parameters:
+    X_test (np.ndarray): New data points (n_samples, n_features).
+    intercept (float): The intercept term from the model.
+    coefs (np.ndarray): The coefficients (slopes) for each feature from the model.
+
+    Returns:
+    np.ndarray: Predicted target values.
+    """
+    # Calculate the predicted values: ŷ = β0 + Σ (βi * Xi)
+    y_pred = intercept + np.dot(X_test, coefs)
+
+    return y_pred
+
+
+def compute_SEE(y_real: np.ndarray, y_predicted: np.ndarray) -> float:
+    """
+    Calculate the Sum of Squared Errors (SSE) between the actual and predicted values.
+
+    Parameters:
+    y_real (np.ndarray): The actual target values (observed).
+    y_predicted (np.ndarray): The predicted target values from the model.
+
+    Returns:
+    float: The Sum of Squared Errors (SSE).
+    """
+    return np.sum((y_real - y_predicted)**2)
 
 
 def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> None:
@@ -171,84 +266,6 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
         print()
 
 
-def regression(
-    X_train: np.ndarray,
-    y_train: np.ndarray,
-    X_validation: np.ndarray,
-    y_validation: np.ndarray,
-    regression_technique: str,
-) -> Tuple[float, np.ndarray]:
-    """
-    Perform regression using a specified regression technique.
-
-    Parameters:
-    X_train (np.ndarray): The independent variables for training.
-    y_train (np.ndarray): The dependent variable for training.
-    X_validation (np.ndarray): The independent variables for validation.
-    y_validation (np.ndarray): The dependent variable for validation.
-    regression_technique (str): The regression technique to use ('ElasticNetCV', 'RidgeCV', or 'LassoCV').
-
-    Returns:
-    Tuple[float, np.ndarray]: The intercept term and coefficients for each feature after regression.
-    """
-    # Initialize the regression model based on the specified technique
-    if regression_technique == "ElasticNetCV":
-        regression = ElasticNetCV(
-            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10],
-            random_state=42,
-            max_iter=3000,
-            fit_intercept=True,
-        ).fit(X=X_train, y=y_train)
-    elif regression_technique == "RidgeCV":
-        regression = RidgeCV(
-            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10], fit_intercept=True
-        ).fit(X=X_train, y=y_train)
-    elif regression_technique == "LassoCV":
-        regression = LassoCV(
-            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10],
-            random_state=42,
-            max_iter=3000,
-            fit_intercept=True,
-        ).fit(X=X_train, y=y_train)
-    else:
-        raise ValueError("Invalid regression technique. Choose 'ElasticNetCV', 'RidgeCV', or 'LassoCV'.")
-
-    # Calculate training and validation scores
-    train_score = regression.score(X=X_train, y=y_train)
-    validation_score = regression.score(X=X_validation, y=y_validation)
-
-    # Print the scores with color formatting
-    print("\nUsing " + Fore.YELLOW + regression_technique + Fore.RESET + ":")
-    print("\tThe train score is: {}{}{}".format(Fore.GREEN, train_score, Fore.RESET))
-    print(
-        "\tThe validation score is: {}{}{}".format(
-            Fore.BLUE, validation_score, Fore.RESET
-        )
-    )
-
-    return regression.intercept_, regression.coef_
-
-
-def toxic_algae_model(
-    X_test: np.ndarray, intercept: float, coefs: np.ndarray
-) -> np.ndarray:
-    """
-    Predict the target values based on the linear regression model.
-
-    Parameters:
-    X_test (np.ndarray): New data points (n_samples, n_features).
-    intercept (float): The intercept term from the model.
-    coefs (np.ndarray): The coefficients (slopes) for each feature from the model.
-
-    Returns:
-    np.ndarray: Predicted target values.
-    """
-    # Calculate the predicted values: ŷ = β0 + Σ (βi * Xi)
-    y_pred = intercept + np.dot(X_test, coefs)
-
-    return y_pred
-
-
 def main():
     """
     Main function to execute the workflow for training and evaluating the model.
@@ -278,26 +295,32 @@ def main():
 
     # Define regression techniques that can be used
     regression_techniques = ["RidgeCV", "LassoCV", "ElasticNetCV"]
+    # regression_techniques = ["RidgeCV"] # MODEL CHOSEN TO BE SUBMITTED
 
-    # Estimate coefficients using Ridge regression
-    intercept, coefficients = regression(
-        X_train=X_train_split,
-        y_train=y_train_split,
-        X_validation=X_validation_split,
-        y_validation=y_validation_split,
-        regression_technique=regression_techniques[0],
-    )
+    for regression_technique in regression_techniques:
+        # Estimate coefficients using regression
+        intercept, coefficients = regression(
+            X_train=X_train_split,
+            y_train=y_train_split,
+            X_validation=X_validation_split,
+            y_validation=y_validation_split,
+            regression_technique=regression_technique,
+        )
 
-    # Print the results
-    print("\nModel parameters:")
-    print(f"\tIntercept: {Fore.GREEN}{intercept}{Fore.RESET}")
-    print(f"\tCoefficients: {Fore.GREEN}{coefficients}{Fore.RESET}\n")
+        # Print the results
+        print("\nModel parameters:")
+        print(f"\tIntercept: {Fore.BLUE}{intercept}{Fore.RESET}")
+        print(f"\tCoefficients: {Fore.BLUE}{coefficients}{Fore.RESET}\n")
 
-    # Predict using the trained model
-    y_pred = toxic_algae_model(X_test=X_test, intercept=intercept, coefs=coefficients)
+        # Predict using the trained model
+        y_pred = toxic_algae_model(X_test=X_test, intercept=intercept, coefs=coefficients)
 
-    # Save the predictions to a file
-    save_npy_to_output(file_name="y_pred.npy", data=y_pred)
+        # Compute SSE
+        SEE_value = compute_SEE(y_predicted=y_pred, y_real=y_train)
+        print(f"Computed SEE: {Fore.BLUE}{SEE_value}{Fore.RESET}\n")
+
+        # Save the predictions to a file
+        save_npy_to_output(file_name="y_pred.npy", data=y_pred)
 
 
 if __name__ == "__main__":
