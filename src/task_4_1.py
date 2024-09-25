@@ -4,187 +4,14 @@ import pandas as pd
 from colorama import Fore
 from typing import Tuple
 from sklearn.linear_model import (
-    ElasticNetCV,
-    LassoCV,
-    RidgeCV,
+    ElasticNet,
+    Lasso,
+    Ridge,
     RANSACRegressor,
     LinearRegression,
 )
 from utils import get_absolute_path, load_data, get_plot_save_path, save_npy_to_output
-from sklearn.model_selection import train_test_split
-
-
-def generate_train_validation_data(
-    X_train: np.ndarray, y_train: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Split the training data into training and validation sets.
-
-    Parameters:
-    X_train (np.ndarray): The input features for training.
-    y_train (np.ndarray): The target labels corresponding to X_train.
-
-    Returns:
-    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: 
-        - X_train_split: Training features after the split.
-        - X_validation_split: Validation features after the split.
-        - y_train_split: Training labels after the split.
-        - y_validation_split: Validation labels after the split.
-    """
-    # Split the data into training and validation sets
-    X_train_split, X_validation_split, y_train_split, y_validation_split = (
-        train_test_split(
-            X_train,  # Input features
-            y_train,  # Target labels corresponding to X_train
-            test_size=0.2,  # 20% of the data will go to validation set
-            shuffle=True,  # Shuffle the data before splitting for randomness
-            random_state=42,  # Ensure reproducibility of the split
-        )
-    )
-
-    # Print the shapes of the split data
-    print("Split shapes:")
-    print(
-        f"\tX_train_split: {Fore.BLUE}{X_train_split.shape}{Fore.RESET}, y_train_split: {Fore.BLUE}{y_train_split.shape}{Fore.RESET}"
-    )
-    print(
-        f"\tX_validation_split: {Fore.BLUE}{X_validation_split.shape}{Fore.RESET}, y_validation_split: {Fore.BLUE}{y_validation_split.shape}{Fore.RESET}"
-    )
-
-    return X_train_split, X_validation_split, y_train_split, y_validation_split
-
-
-def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Use RANSAC to fit a model and remove outliers from the dataset.
-
-    Parameters:
-    X_train (np.ndarray): The independent variables (features).
-    y_train (np.ndarray): The dependent variable (target).
-
-    Returns:
-    Tuple[np.ndarray, np.ndarray]: 
-        - X_inliers: The filtered independent variables without outliers.
-        - y_inliers: The filtered dependent variable without outliers.
-        - X_outliers: The outlier independent variables.
-        - y_outliers: The outlier dependent variables.
-    """
-    # Create the RANSAC model with a base estimator (e.g., LinearRegression)
-    ransac = RANSACRegressor(estimator=LinearRegression())
-
-    # Fit the RANSAC model to the training data
-    ransac.fit(X=X_train, y=y_train)
-
-    # Get a mask of inliers and outliers
-    inlier_mask = ransac.inlier_mask_  # True for inliers, False for outliers
-
-    # Separate inliers and outliers
-    X_inliers = X_train[inlier_mask]
-    y_inliers = y_train[inlier_mask]
-    X_outliers = X_train[~inlier_mask]
-    # y_outliers = y_train[~inlier_mask]
-
-    # Print statistics about inliers and outliers
-    print(f"Number of inliers: {Fore.BLUE}{len(X_inliers)}{Fore.RESET}")
-    print(f"Number of outliers: {Fore.BLUE}{len(X_outliers)}{Fore.RESET}")
-    print()
-
-    return X_inliers, y_inliers
-
-
-def regression(
-    X_train: np.ndarray,
-    y_train: np.ndarray,
-    X_validation: np.ndarray,
-    y_validation: np.ndarray,
-    regression_technique: str,
-) -> Tuple[float, np.ndarray]:
-    """
-    Perform regression using a specified regression technique.
-
-    Parameters:
-    X_train (np.ndarray): The independent variables for training.
-    y_train (np.ndarray): The dependent variable for training.
-    X_validation (np.ndarray): The independent variables for validation.
-    y_validation (np.ndarray): The dependent variable for validation.
-    regression_technique (str): The regression technique to use ('ElasticNetCV', 'RidgeCV', or 'LassoCV').
-
-    Returns:
-    Tuple[float, np.ndarray]: The intercept term and coefficients for each feature after regression.
-    """
-    # Initialize the regression model based on the specified technique
-    if regression_technique == "ElasticNetCV":
-        regression = ElasticNetCV(
-            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10],
-            random_state=42,
-            max_iter=3000,
-            l1_ratio= [0.1, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1],
-            fit_intercept=True,
-        ).fit(X=X_train, y=y_train)
-    elif regression_technique == "RidgeCV":
-        regression = RidgeCV(
-            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10], 
-            fit_intercept=True
-        ).fit(X=X_train, y=y_train)
-    elif regression_technique == "LassoCV":
-        regression = LassoCV(
-            alphas=[0.0001, 0.001, 0.01, 0.1, 1, 5, 10],
-            random_state=42,
-            max_iter=3000,
-            fit_intercept=True,
-        ).fit(X=X_train, y=y_train)
-    else:
-        raise ValueError("Invalid regression technique. Choose 'ElasticNetCV', 'RidgeCV', or 'LassoCV'.")
-
-    # Calculate training and validation scores
-    train_score = regression.score(X=X_train, y=y_train)
-    validation_score = regression.score(X=X_validation, y=y_validation)
-
-    # Print the scores with color formatting
-    print("---------------------------")
-    print("Using " + Fore.YELLOW + regression_technique + Fore.RESET + ":")
-    print("\tThe train score is (R²): {}{}{}".format(Fore.BLUE, train_score, Fore.RESET))
-    print(
-        "\tThe validation score is (R²): {}{}{}".format(
-            Fore.BLUE, validation_score, Fore.RESET
-        )
-    )
-
-    return regression.intercept_, regression.coef_
-
-
-def toxic_algae_model(
-    X_test: np.ndarray, intercept: float, coefs: np.ndarray
-) -> np.ndarray:
-    """
-    Predict the target values based on the linear regression model.
-
-    Parameters:
-    X_test (np.ndarray): New data points (n_samples, n_features).
-    intercept (float): The intercept term from the model.
-    coefs (np.ndarray): The coefficients (slopes) for each feature from the model.
-
-    Returns:
-    np.ndarray: Predicted target values.
-    """
-    # Calculate the predicted values: ŷ = β0 + Σ (βi * Xi)
-    y_pred = intercept + np.dot(X_test, coefs)
-
-    return y_pred
-
-
-def compute_SEE(y_real: np.ndarray, y_predicted: np.ndarray) -> float:
-    """
-    Calculate the Sum of Squared Errors (SSE) between the actual and predicted values.
-
-    Parameters:
-    y_real (np.ndarray): The actual target values (observed).
-    y_predicted (np.ndarray): The predicted target values from the model.
-
-    Returns:
-    float: The Sum of Squared Errors (SSE).
-    """
-    return np.sum((y_real - y_predicted)**2)
+from sklearn.model_selection import cross_validate
 
 
 def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> None:
@@ -266,6 +93,261 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
         print()
 
 
+def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Use RANSAC to fit a model and remove outliers from the dataset.
+
+    Parameters:
+    X_train (np.ndarray): The independent variables (features).
+    y_train (np.ndarray): The dependent variable (target).
+
+    Returns:
+    Tuple[np.ndarray, np.ndarray]: 
+        - X_inliers: The filtered independent variables without outliers.
+        - y_inliers: The filtered dependent variable without outliers.
+        - X_outliers: The outlier independent variables.
+        - y_outliers: The outlier dependent variables.
+    """
+    # Create the RANSAC model with a base estimator (e.g., LinearRegression)
+    ransac = RANSACRegressor(estimator=LinearRegression())
+
+    # Fit the RANSAC model to the training data
+    ransac.fit(X=X_train, y=y_train)
+
+    # Get a mask of inliers and outliers
+    inlier_mask = ransac.inlier_mask_  # True for inliers, False for outliers
+
+    # Separate inliers and outliers
+    X_inliers = X_train[inlier_mask]
+    y_inliers = y_train[inlier_mask]
+    X_outliers = X_train[~inlier_mask]
+    # y_outliers = y_train[~inlier_mask]
+
+    # Print statistics about inliers and outliers
+    print(f"Number of inliers: {Fore.BLUE}{len(X_inliers)}{Fore.RESET}")
+    print(f"Number of outliers: {Fore.BLUE}{len(X_outliers)}{Fore.RESET}")
+    print()
+
+    return X_inliers, y_inliers
+
+
+def toxic_algae_model(
+    X_test: np.ndarray, intercept: float, coefs: np.ndarray
+) -> np.ndarray:
+    """
+    Predict the target values based on the linear regression model.
+
+    Parameters:
+    X_test (np.ndarray): New data points (n_samples, n_features).
+    intercept (float): The intercept term from the model.
+    coefs (np.ndarray): The coefficients (slopes) for each feature from the model.
+
+    Returns:
+    np.ndarray: Predicted target values.
+    """
+    # Calculate the predicted values: ŷ = β0 + Σ (βi * Xi)
+    y_pred = intercept + np.dot(X_test, coefs)
+
+    return y_pred
+
+
+def shuffle_data(X, y):
+    """
+    Shuffle the dataset X and corresponding labels y while maintaining their row correspondence.
+
+    Parameters:
+    X (np.ndarray): The input features for training.
+    y (np.ndarray): The target labels corresponding to X_train.
+
+    Returns:
+    Tuple[np.ndarray, np.ndarray]: 
+        X_shuffled: The shuffled input features, maintaining the same shape as X.
+        y_shuffled: The shuffled labels, maintaining the same shape as y.
+    """
+    # Horizontally stack X and y into a single 2D array
+    data = np.hstack([X, y.reshape(-1, 1)])  # Ensure y is a column vector
+    
+    # Shuffle the rows of the combined data to randomize the order of samples
+    np.random.shuffle(data)
+    
+    # Separate the shuffled data back into X and y
+    X_shuffled = data[:, :-1]   # All columns except the last one (original X)
+    y_shuffled = data[:, -1:]    # Only the last column (original y)
+    
+    return X_shuffled, y_shuffled
+
+
+def compare_models(X_clean, y_clean):
+    NUM_FOLDS = 5
+    lambdas = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 5, 10]
+    l1_ratio = [0.1, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
+    X_clean_shuffled, y_clean_shuffled = shuffle_data(X=X_clean, y=y_clean)
+
+    ########################
+    # Test Linear Regression
+    ########################
+    linear_reg = LinearRegression().fit(X=X_clean_shuffled, y=y_clean_shuffled)
+    linear_reg_scores = cross_validate(
+        estimator=linear_reg, 
+        X=X_clean_shuffled,
+        y=y_clean_shuffled,
+        cv=NUM_FOLDS
+    )["test_score"]
+
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "Linear Regression" + Fore.RESET + ":")
+    print(f"\tAverage score (R²) = {sum(linear_reg_scores)/NUM_FOLDS}")
+    print(f"\tModel parameters:")
+    print(f"\t\tIntercept: {linear_reg.intercept_}\n\t\tCoefficients: {linear_reg.coef_}")
+
+    #######################
+    # Test Ridge Regression
+    #######################
+    ridge_reg_avg_scores = []
+    for alpha in lambdas:
+        ridge_reg = Ridge(alpha=alpha, fit_intercept=True).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+        ridge_reg_scores = cross_validate(
+            estimator=ridge_reg,
+            X=X_clean_shuffled,
+            y=y_clean_shuffled,
+            cv=NUM_FOLDS
+        )["test_score"]
+        ridge_reg_avg_scores.append(sum(ridge_reg_scores)/NUM_FOLDS)
+    max_ridge_avg_scores = max(ridge_reg_avg_scores)
+    max_ridge_lambda = lambdas[ridge_reg_avg_scores.index(max_ridge_avg_scores)]
+
+    ridge_reg = Ridge(alpha=max_ridge_lambda, fit_intercept=True).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+    cross_validate(
+        estimator=ridge_reg,
+        X=X_clean_shuffled,
+        y=y_clean_shuffled,
+        cv=NUM_FOLDS
+    )
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "Ridge Regression" + Fore.RESET + ":")
+    print(f"\tBest average score (R²) = {max_ridge_avg_scores} (lambda = {max_ridge_lambda})")
+    print(f"\tModel parameters:")
+    print(f"\t\tIntercept: {ridge_reg.intercept_}\n\t\tCoefficients: {ridge_reg.coef_}")
+
+    #######################
+    # Test Lasso Regression
+    #######################
+    lasso_reg_avg_scores = []
+    for alpha in lambdas:
+        lasso_reg = Lasso(alpha=alpha, fit_intercept=True, max_iter=5000).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+        lasso_reg_scores = cross_validate(
+            estimator=lasso_reg,
+            X=X_clean_shuffled,
+            y=y_clean_shuffled,
+            cv=NUM_FOLDS
+        )["test_score"]
+        lasso_reg_avg_scores.append(sum(lasso_reg_scores)/NUM_FOLDS)
+    max_lasso_avg_scores = max(lasso_reg_avg_scores)
+    max_lasso_lambda = lambdas[lasso_reg_avg_scores.index(max_lasso_avg_scores)]
+
+    lasso_reg = Lasso(alpha=max_lasso_lambda, fit_intercept=True, max_iter=5000).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+    cross_validate(
+        estimator=lasso_reg,
+        X=X_clean_shuffled,
+        y=y_clean_shuffled,
+        cv=NUM_FOLDS
+    )
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "Lasso Regression" + Fore.RESET + ":")
+    print(f"\tBest average score (R²) = {max_lasso_avg_scores} (lambda = {max_lasso_lambda})")
+    print(f"\tModel parameters:")
+    print(f"\t\tIntercept: {lasso_reg.intercept_}\n\t\tCoefficients: {lasso_reg.coef_}")
+
+    ############################
+    # Test ElasticNet Regression
+    ############################
+    elastic_net_reg_avg_scores = []
+    max_elastic_net_avg_scores = 0
+    for alpha in lambdas:
+        for ratio in l1_ratio:
+            elastic_net_reg = ElasticNet(alpha=alpha, fit_intercept=True, l1_ratio=ratio, max_iter=6000).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+            elastic_net_reg_scores = cross_validate(
+                estimator=elastic_net_reg,
+                X=X_clean_shuffled,
+                y=y_clean_shuffled,
+                cv=NUM_FOLDS
+            )["test_score"]
+            elastic_net_reg_avg_scores.append(sum(elastic_net_reg_scores)/NUM_FOLDS)
+            if max(elastic_net_reg_avg_scores) > max_elastic_net_avg_scores:
+                max_elastic_net_lambda = alpha
+                max_elastic_ratio = ratio
+
+    elastic_net_reg = ElasticNet(
+        alpha=max_elastic_net_lambda, 
+        fit_intercept=True, 
+        l1_ratio=max_elastic_ratio, 
+        max_iter=6000
+    ).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+    cross_validate(
+        estimator=elastic_net_reg,
+        X=X_clean_shuffled,
+        y=y_clean_shuffled,
+        cv=NUM_FOLDS
+    )
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "ElasticNet Regression" + Fore.RESET + ":")
+    print(f"\tBest average score (R²) = {max(elastic_net_reg_avg_scores)} (lambda = {max_elastic_net_lambda}, l1_ratio = {max_elastic_ratio})")
+    print(f"\tModel parameters:")
+    print(f"\t\tIntercept: {elastic_net_reg.intercept_}\n\t\tCoefficients: {elastic_net_reg.coef_}")
+
+    ############################
+    # Final comparison
+    ############################
+    r_squared = [sum(linear_reg_scores)/NUM_FOLDS, max_ridge_avg_scores, max_lasso_avg_scores, max_elastic_net_avg_scores]
+    if max(r_squared) == sum(linear_reg_scores)/NUM_FOLDS:
+        print("---------------------------")
+        print(f"Best model is Linear Regression with R² = {sum(linear_reg_scores)/NUM_FOLDS}")
+    elif max(r_squared) == max_ridge_avg_scores:
+        print("---------------------------")
+        print(f"Best model is Ridge Regression with R² = {max_ridge_avg_scores}")
+    elif max(r_squared) == max_lasso_avg_scores:
+        print("---------------------------")
+        print(f"Best model is Lasso Regression with R² = {max_lasso_avg_scores}")
+    elif max(r_squared) == max_elastic_net_avg_scores:
+        print("---------------------------")
+        print(f"Best model is ElasticNet Regression with R² = {max_elastic_net_avg_scores}")
+
+    # plt.plot(lambdas, ridge_reg_avg_scores, label="Ridge regression")
+    # plt.legend()
+    # plt.figure()
+    # plt.plot(lambdas, lasso_reg_avg_scores, label="Lasso regression")
+    # plt.legend()
+    # plt.show()
+
+
+def chosen_model(X_clean, y_clean):
+    NUM_FOLDS = 5
+    ALPHA = 10
+    X_clean_shuffled, y_clean_shuffled = shuffle_data(X=X_clean, y=y_clean)
+
+    #######################
+    # Chosen model is Ridge
+    #######################
+    ridge_reg = Ridge(alpha=ALPHA, fit_intercept=True).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+    ridge_reg_scores = cross_validate(
+        estimator=ridge_reg,
+        X=X_clean_shuffled,
+        y=y_clean_shuffled,
+        cv=NUM_FOLDS
+    )    
+    max_ridge_scores = max(ridge_reg_scores)
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "Ridge Regression" + Fore.RESET + ":")
+    print(f"\tBest average score (R²) = {max_ridge_scores} (lambda = {ALPHA})")
+    print(f"\tModel parameters:")
+    print(f"\t\tIntercept: {ridge_reg.intercept_}\n\t\tCoefficients: {ridge_reg.coef_}")
+
+    coefs = np.array(ridge_reg.coef_).flatten()
+    intercept = ridge_reg.intercept_[0]
+
+    return intercept, coefs
+
+
 def main():
     """
     Main function to execute the workflow for training and evaluating the model.
@@ -285,42 +367,18 @@ def main():
     # Remove outliers from training data
     X_clean, y_clean = remove_outliers_with_ransac(X_train=X_train, y_train=y_train)
 
-    # Plot the cleaned training data
+    # # Plot the cleaned training data
     plot_training_data(X_train=X_clean, individual_plots=True)
 
-    # Split the cleaned data into training and validation sets
-    X_train_split, X_validation_split, y_train_split, y_validation_split = (
-        generate_train_validation_data(X_train=X_clean, y_train=y_clean)
-    )
+    compare_models(X_clean=X_clean, y_clean=y_clean)
 
-    # Define regression techniques that can be used
-    regression_techniques = ["RidgeCV", "LassoCV", "ElasticNetCV"]
-    # regression_techniques = ["RidgeCV"] # MODEL CHOSEN TO BE SUBMITTED
+    # intercept, coefficients = chosen_model(X_clean=X_clean, y_clean=y_clean)
 
-    for regression_technique in regression_techniques:
-        # Estimate coefficients using regression
-        intercept, coefficients = regression(
-            X_train=X_train_split,
-            y_train=y_train_split,
-            X_validation=X_validation_split,
-            y_validation=y_validation_split,
-            regression_technique=regression_technique,
-        )
+    # # Predict using the trained model
+    # y_pred = toxic_algae_model(X_test=X_test, intercept=intercept, coefs=coefficients)
 
-        # Print the results
-        print("\nModel parameters:")
-        print(f"\tIntercept: {Fore.BLUE}{intercept}{Fore.RESET}")
-        print(f"\tCoefficients: {Fore.BLUE}{coefficients}{Fore.RESET}\n")
-
-        # Predict using the trained model
-        y_pred = toxic_algae_model(X_test=X_test, intercept=intercept, coefs=coefficients)
-
-        # Compute SSE
-        SEE_value = compute_SEE(y_predicted=y_pred, y_real=y_train)
-        print(f"Computed SEE: {Fore.BLUE}{SEE_value}{Fore.RESET}\n")
-
-        # Save the predictions to a file
-        save_npy_to_output(file_name="y_pred.npy", data=y_pred)
+    # # Save the predictions to a file
+    # save_npy_to_output(file_name="y_pred.npy", data=y_pred)
 
 
 if __name__ == "__main__":
