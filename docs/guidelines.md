@@ -51,6 +51,10 @@ first we remove outliers, then we split training data in train and validation, a
 
 ## 4.2  Second Problem - The ARX model
 
+Estimate the theta parameters of the model based on Y and X
+
+The data that will be available is not the X and Y. We need to create X and Y based on the u's
+
 # 5. Part 2 - Image Analysis
 
 ## 5.1 First Problem - Image classification

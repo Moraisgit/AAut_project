@@ -53,7 +53,7 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
             plt.grid(visible=True)  # Add gridlines for better readability
 
             # Save each plot separately using the image name
-            plt.savefig(get_plot_save_path(image_name=f"plot_{i+1}.png"))
+            plt.savefig(get_plot_save_path(image_name=f"plot_{i+1}.png"), bbox_inches='tight')
             plt.close()  # Close the plot after saving to free up memory
 
         print("Individual plots saved as plot_1.png, plot_2.png, ..., plot_5.png")
@@ -88,63 +88,84 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
         axis[2, 0].grid(True)  # Add gridlines for better readability
 
         # Save the entire figure to a file
-        plt.savefig(get_plot_save_path(image_name="Cleaned_data.png"))
+        plt.savefig(get_plot_save_path(image_name="Cleaned_data.png"), bbox_inches='tight')
         print("Figure saved as Cleaned_data.png")
         print()
 
 
-def plot_outliers_inliers(inlier_mask, inliers, outliers):
-    # First plot: X from 1 to len(inlier_mask), plot inliers in blue and outliers in red
-    X = np.arange(1, len(inlier_mask) + 1)
+def plot_outliers_inliers(inlier_mask: np.ndarray, inliers: np.ndarray, outliers: np.ndarray) -> None:
+    """
+    Plot inliers and outliers of a dataset based on a boolean mask.
 
+    Parameters:
+    inlier_mask (np.ndarray): A boolean array where True indicates inliers and False indicates outliers.
+    inliers (np.ndarray): Data points classified as inliers.
+    outliers (np.ndarray): Data points classified as outliers.
+
+    Returns:
+    None: This function saves the generated plots to files and does not return any value.
+    """
+    # First plot: X from 1 to len(inlier_mask), plotting inliers (blue) and outliers (red)
+    X = np.arange(1, len(inlier_mask) + 1)
+    
     fig, ax = plt.subplots()
     
+    # Initialize indices for inliers and outliers
     inlier_idx = 0
     outlier_idx = 0
     
-    # Plot points based on the inlier_mask
+    # Flags to track whether we've already added the legend for inliers and outliers
     plotted_inlier = False
     plotted_outlier = False
     
+    # Iterate through inlier_mask and plot points accordingly
     for i, is_inlier in enumerate(inlier_mask):
         if is_inlier:
-            # Plot inliers in blue
-            ax.stem([X[i]], [inliers[inlier_idx]], linefmt='b-', markerfmt='bo', basefmt=" ", 
+            # Plot inliers with blue color
+            ax.stem([X[i]], [inliers[inlier_idx]], linefmt='b-', markerfmt='bo', basefmt=" ",
                     label="Inliers" if not plotted_inlier else "")
             inlier_idx += 1
             plotted_inlier = True
         else:
-            # Plot outliers in red
-            ax.stem([X[i]], [outliers[outlier_idx]], linefmt='r-', markerfmt='ro', basefmt=" ", 
+            # Plot outliers with red color
+            ax.stem([X[i]], [outliers[outlier_idx]], linefmt='r-', markerfmt='ro', basefmt=" ",
                     label="Outliers" if not plotted_outlier else "")
             outlier_idx += 1
             plotted_outlier = True
 
-    # Add horizontal line at y=0
+    # Add a horizontal line at y=0 to indicate the baseline
     ax.axhline(y=0, color='k', linestyle='--', linewidth=1)
 
+    # Add legend, title, and labels
     ax.legend()
-    ax.set_title("Inliers and Outliers")
-    ax.set_xlabel("Samples")
-    ax.set_ylabel("Toxic algae concentration")
-    # plt.show()
-    plt.savefig(get_plot_save_path("Inliers and Outliers"))
+    ax.set_title(label="Inliers and Outliers")
+    ax.set_xlabel(xlabel="Samples")
+    ax.set_ylabel(ylabel="Toxic algae concentration")
 
-    # Second plot: Inliers only, X from 1 to len(inliers)
-    X_inliers = np.arange(1, len(inliers) + 1)
+    # Adjust layout and save the plot
+    plt.tight_layout()
+    plt.savefig(get_plot_save_path("Inliers and Outliers"), bbox_inches='tight')
+
+    # Second plot: Inliers only
+    X_inliers = np.arange(1, len(inliers) + 1)  # X-axis values for inliers only
     
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots()  # Create a new figure for inliers only
     ax.stem(X_inliers, inliers, linefmt='b-', markerfmt='bo', basefmt=" ", label="Inliers")
     
-    # Add horizontal line at y=0
+    # Add a horizontal line at y=0 for baseline
     ax.axhline(y=0, color='k', linestyle='--', linewidth=1)
 
-    ax.legend()
-    ax.set_title("Inliers")
-    ax.set_xlabel("Samples")
-    ax.set_ylabel("Toxic algae concentration")
-    # plt.show()
-    plt.savefig(get_plot_save_path("Inliers"))
+    # Set custom limits for the x-axis
+    ax.set_xlim([-5, len(inliers) + 10])
+
+    # Add title and labels for the second plot
+    ax.set_title(label="Inliers")
+    ax.set_xlabel(xlabel="Samples")
+    ax.set_ylabel(ylabel="Toxic algae concentration")
+
+    # Adjust layout and save the inliers plot
+    plt.tight_layout()
+    plt.savefig(get_plot_save_path("Inliers"), bbox_inches='tight')
 
 
 def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -162,28 +183,31 @@ def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tup
         - X_outliers: The outlier independent variables.
         - y_outliers: The outlier dependent variables.
     """
-    # Create the RANSAC model with a base estimator (e.g., LinearRegression)
+    
+    # Create the RANSAC model with a base estimator (LinearRegression is used in this case)
     ransac = RANSACRegressor(estimator=LinearRegression())
 
-    # Fit the RANSAC model to the training data
+    # Fit the RANSAC model on the training data
     ransac.fit(X=X_train, y=y_train)
 
-    # Get a mask of inliers and outliers
-    inlier_mask = ransac.inlier_mask_  # True for inliers, False for outliers
-
-    # Separate inliers and outliers
+    # Get the mask that indicates inliers (True) and outliers (False)
+    inlier_mask = ransac.inlier_mask_ 
+    
+    # Separate the training data into inliers and outliers based on the mask
     X_inliers = X_train[inlier_mask]
     y_inliers = y_train[inlier_mask]
     X_outliers = X_train[~inlier_mask]
     y_outliers = y_train[~inlier_mask]
 
-    plot_outliers_inliers(inlier_mask= inlier_mask, inliers=y_inliers, outliers=y_outliers)
+    # Plot the inliers and outliers using the plot_outliers_inliers function
+    plot_outliers_inliers(inlier_mask=inlier_mask, inliers=y_inliers, outliers=y_outliers)
 
-    # Print statistics about inliers and outliers
+    # Print the number of inliers and outliers
     print(f"Number of inliers: {Fore.BLUE}{len(X_inliers)}{Fore.RESET}")
     print(f"Number of outliers: {Fore.BLUE}{len(X_outliers)}{Fore.RESET}")
     print()
 
+    # Return the inliers
     return X_inliers, y_inliers
 
 
@@ -207,7 +231,7 @@ def toxic_algae_model(
     return y_pred
 
 
-def shuffle_data(X, y):
+def shuffle_data(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Shuffle the dataset X and corresponding labels y while maintaining their row correspondence.
 
@@ -233,16 +257,29 @@ def shuffle_data(X, y):
     return X_shuffled, y_shuffled
 
 
-def compare_models(X_clean, y_clean):
+def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
+    """
+    Compare different regression models (Linear, Ridge, Lasso, and ElasticNet) on the cleaned dataset.
+
+    Parameters:
+    X_clean (np.ndarray): The independent variables (features) after outlier removal.
+    y_clean (np.ndarray): The dependent variable (target) after outlier removal.
+    """
+    # Set number of folds for cross-validation and lambda values for regularization
     NUM_FOLDS = 5
-    lambdas = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 5, 10]
-    l1_ratio = [0.1, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
+    lambdas = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 5, 10] 
+    l1_ratio = [0.1, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1] # For ElasticNet
+
+    # Shuffle the clean data before training the models
     X_clean_shuffled, y_clean_shuffled = shuffle_data(X=X_clean, y=y_clean)
 
     ########################
     # Test Linear Regression
     ########################
+    # Train Linear Regression model
     linear_reg = LinearRegression().fit(X=X_clean_shuffled, y=y_clean_shuffled)
+    
+    # Perform cross-validation and store scores
     linear_reg_scores = cross_validate(
         estimator=linear_reg, 
         X=X_clean_shuffled,
@@ -250,6 +287,7 @@ def compare_models(X_clean, y_clean):
         cv=NUM_FOLDS
     )["test_score"]
 
+    # Print results for Linear Regression
     print("---------------------------")
     print("Using " + Fore.YELLOW + "Linear Regression" + Fore.RESET + ":")
     print(f"\tAverage score (R²) = {sum(linear_reg_scores)/NUM_FOLDS}")
@@ -259,26 +297,25 @@ def compare_models(X_clean, y_clean):
     #######################
     # Test Ridge Regression
     #######################
+    # Train Ridge Regression with different lambdas
     ridge_reg_avg_scores = []
     for alpha in lambdas:
         ridge_reg = Ridge(alpha=alpha, fit_intercept=True).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+        
+        # Perform cross-validation and calculate average score
         ridge_reg_scores = cross_validate(
             estimator=ridge_reg,
             X=X_clean_shuffled,
             y=y_clean_shuffled,
             cv=NUM_FOLDS
         )["test_score"]
-        ridge_reg_avg_scores.append(sum(ridge_reg_scores)/NUM_FOLDS)
+        ridge_reg_avg_scores.append(sum(ridge_reg_scores) / NUM_FOLDS)
+    
+    # Find best lambda value and corresponding score for Ridge Regression
     max_ridge_avg_scores = max(ridge_reg_avg_scores)
     max_ridge_lambda = lambdas[ridge_reg_avg_scores.index(max_ridge_avg_scores)]
 
-    ridge_reg = Ridge(alpha=max_ridge_lambda, fit_intercept=True).fit(X=X_clean_shuffled, y=y_clean_shuffled)
-    cross_validate(
-        estimator=ridge_reg,
-        X=X_clean_shuffled,
-        y=y_clean_shuffled,
-        cv=NUM_FOLDS
-    )
+    # Print results for Ridge Regression
     print("---------------------------")
     print("Using " + Fore.YELLOW + "Ridge Regression" + Fore.RESET + ":")
     print(f"\tBest average score (R²) = {max_ridge_avg_scores} (lambda = {max_ridge_lambda})")
@@ -288,26 +325,25 @@ def compare_models(X_clean, y_clean):
     #######################
     # Test Lasso Regression
     #######################
+    # Train Lasso Regression with different lambdas
     lasso_reg_avg_scores = []
     for alpha in lambdas:
         lasso_reg = Lasso(alpha=alpha, fit_intercept=True, max_iter=5000).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+        
+        # Perform cross-validation and calculate average score
         lasso_reg_scores = cross_validate(
             estimator=lasso_reg,
             X=X_clean_shuffled,
             y=y_clean_shuffled,
             cv=NUM_FOLDS
         )["test_score"]
-        lasso_reg_avg_scores.append(sum(lasso_reg_scores)/NUM_FOLDS)
+        lasso_reg_avg_scores.append(sum(lasso_reg_scores) / NUM_FOLDS)
+    
+    # Find best lambda value and corresponding score for Lasso Regression
     max_lasso_avg_scores = max(lasso_reg_avg_scores)
     max_lasso_lambda = lambdas[lasso_reg_avg_scores.index(max_lasso_avg_scores)]
 
-    lasso_reg = Lasso(alpha=max_lasso_lambda, fit_intercept=True, max_iter=5000).fit(X=X_clean_shuffled, y=y_clean_shuffled)
-    cross_validate(
-        estimator=lasso_reg,
-        X=X_clean_shuffled,
-        y=y_clean_shuffled,
-        cv=NUM_FOLDS
-    )
+    # Print results for Lasso Regression
     print("---------------------------")
     print("Using " + Fore.YELLOW + "Lasso Regression" + Fore.RESET + ":")
     print(f"\tBest average score (R²) = {max_lasso_avg_scores} (lambda = {max_lasso_lambda})")
@@ -317,34 +353,28 @@ def compare_models(X_clean, y_clean):
     ############################
     # Test ElasticNet Regression
     ############################
+    # Train ElasticNet with different lambdas and l1_ratios
     elastic_net_reg_avg_scores = []
     max_elastic_net_avg_scores = 0
     for alpha in lambdas:
         for ratio in l1_ratio:
             elastic_net_reg = ElasticNet(alpha=alpha, fit_intercept=True, l1_ratio=ratio, max_iter=6000).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+            
+            # Perform cross-validation and calculate average score
             elastic_net_reg_scores = cross_validate(
                 estimator=elastic_net_reg,
                 X=X_clean_shuffled,
                 y=y_clean_shuffled,
                 cv=NUM_FOLDS
             )["test_score"]
-            elastic_net_reg_avg_scores.append(sum(elastic_net_reg_scores)/NUM_FOLDS)
+            elastic_net_reg_avg_scores.append(sum(elastic_net_reg_scores) / NUM_FOLDS)
+            
+            # Track the best ElasticNet model based on average score
             if max(elastic_net_reg_avg_scores) > max_elastic_net_avg_scores:
                 max_elastic_net_lambda = alpha
                 max_elastic_ratio = ratio
 
-    elastic_net_reg = ElasticNet(
-        alpha=max_elastic_net_lambda, 
-        fit_intercept=True, 
-        l1_ratio=max_elastic_ratio, 
-        max_iter=6000
-    ).fit(X=X_clean_shuffled, y=y_clean_shuffled)
-    cross_validate(
-        estimator=elastic_net_reg,
-        X=X_clean_shuffled,
-        y=y_clean_shuffled,
-        cv=NUM_FOLDS
-    )
+    # Print results for ElasticNet Regression
     print("---------------------------")
     print("Using " + Fore.YELLOW + "ElasticNet Regression" + Fore.RESET + ":")
     print(f"\tBest average score (R²) = {max(elastic_net_reg_avg_scores)} (lambda = {max_elastic_net_lambda}, l1_ratio = {max_elastic_ratio})")
@@ -352,12 +382,15 @@ def compare_models(X_clean, y_clean):
     print(f"\t\tIntercept: {elastic_net_reg.intercept_}\n\t\tCoefficients: {elastic_net_reg.coef_}")
 
     ############################
-    # Final comparison
+    # Final comparison of models
     ############################
+    # Store the R² scores for comparison
     r_squared = [sum(linear_reg_scores)/NUM_FOLDS, max_ridge_avg_scores, max_lasso_avg_scores, max_elastic_net_avg_scores]
-    if max(r_squared) == sum(linear_reg_scores)/NUM_FOLDS:
+    
+    # Determine the best model based on R²
+    if max(r_squared) == sum(linear_reg_scores) / NUM_FOLDS:
         print("---------------------------")
-        print(f"Best model is Linear Regression with R² = {sum(linear_reg_scores)/NUM_FOLDS}")
+        print(f"Best model is Linear Regression with R² = {sum(linear_reg_scores) / NUM_FOLDS}")
     elif max(r_squared) == max_ridge_avg_scores:
         print("---------------------------")
         print(f"Best model is Ridge Regression with R² = {max_ridge_avg_scores}")
@@ -368,43 +401,89 @@ def compare_models(X_clean, y_clean):
         print("---------------------------")
         print(f"Best model is ElasticNet Regression with R² = {max_elastic_net_avg_scores}")
 
-    # plt.plot(lambdas, ridge_reg_avg_scores, label="Ridge regression")
-    # plt.legend()
-    # plt.figure()
-    # plt.plot(lambdas, lasso_reg_avg_scores, label="Lasso regression")
-    # plt.legend()
-    # plt.show()
+    ###############################
+    # Plot Ridge Regression results
+    ###############################
+    fig1, ax1 = plt.figure(), plt.gca()
+    ax1.plot(lambdas, ridge_reg_avg_scores)
+
+    y_min_1, y_max_1 = ax1.get_ylim()
+    ax1.set_yticks(np.linspace(y_min_1, y_max_1, 5))
+    ax1.set_title("Ridge Regression")
+    ax1.set_xlabel("Lambda (λ)")
+    ax1.set_ylabel("R²")
+
+    # Save the figure for Ridge Regression
+    plt.tight_layout()
+    plt.savefig(get_plot_save_path("Ridge Regression R²"), bbox_inches='tight')
+
+    ###############################
+    # Plot Lasso Regression results
+    ###############################
+    fig2, ax2 = plt.figure(), plt.gca()
+    ax2.plot(lambdas, lasso_reg_avg_scores)
+
+    y_min_2, y_max_2 = ax2.get_ylim()
+    ax2.set_yticks(np.linspace(y_min_2, y_max_2, 5))
+    ax2.set_title("Lasso Regression")
+    ax2.set_xlabel("Lambda (λ)")
+    ax2.set_ylabel("R²")
+
+    # Save the figure for Lasso Regression
+    plt.tight_layout()
+    plt.savefig(get_plot_save_path("Lasso Regression R²"), bbox_inches='tight')
+
+    # Display the plots
+    plt.show()
 
 
-def chosen_model(X_clean, y_clean):
+def chosen_model(X_clean: np.ndarray, y_clean: np.ndarray) -> Tuple[float, np.ndarray]:
+    """
+    Train and evaluate the Ridge Regression model on the cleaned dataset with a chosen regularization parameter.
+
+    Parameters:
+    X_clean (np.ndarray): The independent variables (features) after outlier removal.
+    y_clean (np.ndarray): The dependent variable (target) after outlier removal.
+
+    Returns:
+    Tuple[float, list[float]]: The intercept and coefficients of the Ridge Regression model.
+    """
+    # Set number of folds for cross-validation and the regularization parameter (alpha)
     NUM_FOLDS = 5
     ALPHA = 10
+    
+    # Shuffle the clean data before training the model
     X_clean_shuffled, y_clean_shuffled = shuffle_data(X=X_clean, y=y_clean)
 
-    #######################
-    # Chosen model is Ridge
-    #######################
+    # Chosen model
     ridge_reg = Ridge(alpha=ALPHA, fit_intercept=True).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+    
+    # Perform cross-validation and store the results
     ridge_reg_scores = cross_validate(
         estimator=ridge_reg,
         X=X_clean_shuffled,
         y=y_clean_shuffled,
         cv=NUM_FOLDS
-    )    
-    max_ridge_scores = max(ridge_reg_scores)
+    )
+
+    # Extract the maximum R² score from the cross-validation results
+    max_ridge_scores = max(ridge_reg_scores["test_score"])
+
+    # Print the results of the Ridge Regression model
     print("---------------------------")
     print("Using " + Fore.YELLOW + "Ridge Regression" + Fore.RESET + ":")
     print(f"\tBest average score (R²) = {max_ridge_scores} (lambda = {ALPHA})")
     print(f"\tModel parameters:")
     print(f"\t\tIntercept: {ridge_reg.intercept_}\n\t\tCoefficients: {ridge_reg.coef_}")
 
+    # Extract the model's coefficients and intercept
     coefs = np.array(ridge_reg.coef_).flatten()
-    intercept = ridge_reg.intercept_[0]
+    intercept = ridge_reg.intercept_ 
 
     return intercept, coefs
 
 
-def main():
+def main() -> None:
     """
     Main function to execute the workflow for training and evaluating the model.
     It handles loading data, removing outliers, splitting data, and fitting a regression model.
@@ -426,7 +505,7 @@ def main():
     # # Plot the cleaned training data
     # plot_training_data(X_train=X_clean, individual_plots=True)
 
-    compare_models(X_clean=X_clean, y_clean=y_clean)
+    # compare_models(X_clean=X_clean, y_clean=y_clean)
 
     intercept, coefficients = chosen_model(X_clean=X_clean, y_clean=y_clean)
 
