@@ -93,6 +93,60 @@ def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> N
         print()
 
 
+def plot_outliers_inliers(inlier_mask, inliers, outliers):
+    # First plot: X from 1 to len(inlier_mask), plot inliers in blue and outliers in red
+    X = np.arange(1, len(inlier_mask) + 1)
+
+    fig, ax = plt.subplots()
+    
+    inlier_idx = 0
+    outlier_idx = 0
+    
+    # Plot points based on the inlier_mask
+    plotted_inlier = False
+    plotted_outlier = False
+    
+    for i, is_inlier in enumerate(inlier_mask):
+        if is_inlier:
+            # Plot inliers in blue
+            ax.stem([X[i]], [inliers[inlier_idx]], linefmt='b-', markerfmt='bo', basefmt=" ", 
+                    label="Inliers" if not plotted_inlier else "")
+            inlier_idx += 1
+            plotted_inlier = True
+        else:
+            # Plot outliers in red
+            ax.stem([X[i]], [outliers[outlier_idx]], linefmt='r-', markerfmt='ro', basefmt=" ", 
+                    label="Outliers" if not plotted_outlier else "")
+            outlier_idx += 1
+            plotted_outlier = True
+
+    # Add horizontal line at y=0
+    ax.axhline(y=0, color='k', linestyle='--', linewidth=1)
+
+    ax.legend()
+    ax.set_title("Inliers and Outliers")
+    ax.set_xlabel("Samples")
+    ax.set_ylabel("Toxic algae concentration")
+    # plt.show()
+    plt.savefig(get_plot_save_path("Inliers and Outliers"))
+
+    # Second plot: Inliers only, X from 1 to len(inliers)
+    X_inliers = np.arange(1, len(inliers) + 1)
+    
+    fig, ax = plt.subplots()
+    ax.stem(X_inliers, inliers, linefmt='b-', markerfmt='bo', basefmt=" ", label="Inliers")
+    
+    # Add horizontal line at y=0
+    ax.axhline(y=0, color='k', linestyle='--', linewidth=1)
+
+    ax.legend()
+    ax.set_title("Inliers")
+    ax.set_xlabel("Samples")
+    ax.set_ylabel("Toxic algae concentration")
+    # plt.show()
+    plt.savefig(get_plot_save_path("Inliers"))
+
+
 def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use RANSAC to fit a model and remove outliers from the dataset.
@@ -121,7 +175,9 @@ def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tup
     X_inliers = X_train[inlier_mask]
     y_inliers = y_train[inlier_mask]
     X_outliers = X_train[~inlier_mask]
-    # y_outliers = y_train[~inlier_mask]
+    y_outliers = y_train[~inlier_mask]
+
+    plot_outliers_inliers(inlier_mask= inlier_mask, inliers=y_inliers, outliers=y_outliers)
 
     # Print statistics about inliers and outliers
     print(f"Number of inliers: {Fore.BLUE}{len(X_inliers)}{Fore.RESET}")
@@ -368,17 +424,17 @@ def main():
     X_clean, y_clean = remove_outliers_with_ransac(X_train=X_train, y_train=y_train)
 
     # # Plot the cleaned training data
-    plot_training_data(X_train=X_clean, individual_plots=True)
+    # plot_training_data(X_train=X_clean, individual_plots=True)
 
     compare_models(X_clean=X_clean, y_clean=y_clean)
 
-    # intercept, coefficients = chosen_model(X_clean=X_clean, y_clean=y_clean)
+    intercept, coefficients = chosen_model(X_clean=X_clean, y_clean=y_clean)
 
-    # # Predict using the trained model
-    # y_pred = toxic_algae_model(X_test=X_test, intercept=intercept, coefs=coefficients)
+    # Predict using the trained model
+    y_pred = toxic_algae_model(X_test=X_test, intercept=intercept, coefs=coefficients)
 
-    # # Save the predictions to a file
-    # save_npy_to_output(file_name="y_pred.npy", data=y_pred)
+    # Save the predictions to a file
+    save_npy_to_output(file_name="y_pred.npy", data=y_pred)
 
 
 if __name__ == "__main__":
