@@ -12,6 +12,7 @@ from sklearn.linear_model import (
 )
 from utils import get_absolute_path, load_data, get_plot_save_path, save_npy_to_output
 from sklearn.model_selection import cross_validate
+# from sklearn.utils import shuffle
 
 
 def plot_training_data(X_train: np.ndarray, individual_plots: bool = False) -> None:
@@ -168,7 +169,7 @@ def plot_outliers_inliers(inlier_mask: np.ndarray, inliers: np.ndarray, outliers
     plt.savefig(get_plot_save_path("Inliers"), bbox_inches='tight')
 
 
-def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Use RANSAC to fit a model and remove outliers from the dataset.
 
@@ -208,7 +209,7 @@ def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tup
     print()
 
     # Return the inliers
-    return X_inliers, y_inliers
+    return X_inliers, y_inliers, inlier_mask
 
 
 def toxic_algae_model(
@@ -231,35 +232,37 @@ def toxic_algae_model(
     return y_pred
 
 
-def shuffle_data(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def compute_SEE(y_real: np.ndarray, y_predicted: np.ndarray, inlier_mask: np.ndarray) -> float:
     """
-    Shuffle the dataset X and corresponding labels y while maintaining their row correspondence.
+    Calculate the Sum of Squared Errors (SSE) between the actual and predicted values,
+    considering only the inliers based on the inlier_mask.
 
     Parameters:
-    X (np.ndarray): The input features for training.
-    y (np.ndarray): The target labels corresponding to X_train.
+    y_real (np.ndarray): The actual target values (observed).
+    y_predicted (np.ndarray): The predicted target values from the model.
+    inlier_mask (np.ndarray): A boolean array indicating inliers (True) and outliers (False).
 
     Returns:
-    Tuple[np.ndarray, np.ndarray]: 
-        X_shuffled: The shuffled input features, maintaining the same shape as X.
-        y_shuffled: The shuffled labels, maintaining the same shape as y.
+    float: The Sum of Squared Errors (SSE) for inliers.
     """
-    # Horizontally stack X and y into a single 2D array
-    data = np.hstack([X, y.reshape(-1, 1)])  # Ensure y is a column vector
     
-    # Shuffle the rows of the combined data to randomize the order of samples
-    np.random.shuffle(data)
-    
-    # Separate the shuffled data back into X and y
-    X_shuffled = data[:, :-1]   # All columns except the last one (original X)
-    y_shuffled = data[:, -1:]    # Only the last column (original y)
-    
-    return X_shuffled, y_shuffled
+    # Filter the real and predicted values based on the inlier mask
+    y_real_inliers = y_real[inlier_mask]
+    y_predicted_inliers = y_predicted[inlier_mask]
+
+    # Compute SSE for the inliers
+    return np.sum((y_real_inliers - y_predicted_inliers)**2)
 
 
-def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
+def compare_models(
+        X_clean: np.ndarray, 
+        y_clean: np.ndarray, 
+        X_test: np.ndarray, 
+        y_train: np.ndarray,
+        inlier_mask: np.ndarray
+) -> None:
     """
-    Compare different regression models (Linear, Ridge, Lasso, and ElasticNet) on the cleaned dataset.
+    Compare different regression models (Ridge, Lasso, and ElasticNet) on the cleaned dataset.
 
     Parameters:
     X_clean (np.ndarray): The independent variables (features) after outlier removal.
@@ -267,32 +270,11 @@ def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
     """
     # Set number of folds for cross-validation and lambda values for regularization
     NUM_FOLDS = 5
-    lambdas = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 5, 10] 
-    l1_ratio = [0.1, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1] # For ElasticNet
+    lambdas = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10]
+    l1_ratio = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1] # For ElasticNet
 
-    # Shuffle the clean data before training the models
-    X_clean_shuffled, y_clean_shuffled = shuffle_data(X=X_clean, y=y_clean)
-
-    ########################
-    # Test Linear Regression
-    ########################
-    # Train Linear Regression model
-    linear_reg = LinearRegression().fit(X=X_clean_shuffled, y=y_clean_shuffled)
-    
-    # Perform cross-validation and store scores
-    linear_reg_scores = cross_validate(
-        estimator=linear_reg, 
-        X=X_clean_shuffled,
-        y=y_clean_shuffled,
-        cv=NUM_FOLDS
-    )["test_score"]
-
-    # Print results for Linear Regression
-    print("---------------------------")
-    print("Using " + Fore.YELLOW + "Linear Regression" + Fore.RESET + ":")
-    print(f"\tAverage score (R²) = {sum(linear_reg_scores)/NUM_FOLDS}")
-    print(f"\tModel parameters:")
-    print(f"\t\tIntercept: {linear_reg.intercept_}\n\t\tCoefficients: {linear_reg.coef_}")
+    # # Shuffle the clean data before training the models
+    # X_clean, y_clean = shuffle(X_clean, y_clean)
 
     #######################
     # Test Ridge Regression
@@ -300,13 +282,13 @@ def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
     # Train Ridge Regression with different lambdas
     ridge_reg_avg_scores = []
     for alpha in lambdas:
-        ridge_reg = Ridge(alpha=alpha, fit_intercept=True).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+        ridge_reg = Ridge(alpha=alpha, fit_intercept=True, max_iter=5000).fit(X=X_clean, y=y_clean)
         
         # Perform cross-validation and calculate average score
         ridge_reg_scores = cross_validate(
             estimator=ridge_reg,
-            X=X_clean_shuffled,
-            y=y_clean_shuffled,
+            X=X_clean,
+            y=y_clean,
             cv=NUM_FOLDS
         )["test_score"]
         ridge_reg_avg_scores.append(sum(ridge_reg_scores) / NUM_FOLDS)
@@ -315,10 +297,24 @@ def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
     max_ridge_avg_scores = max(ridge_reg_avg_scores)
     max_ridge_lambda = lambdas[ridge_reg_avg_scores.index(max_ridge_avg_scores)]
 
+    # Refit with best found lambda to get access to the best coefs and intercept
+    ridge_reg = Ridge(alpha=max_ridge_lambda, fit_intercept=True, max_iter=5000).fit(X=X_clean, y=y_clean)
+
+    # Compute prediction
+    ridge_reg_y_pred = toxic_algae_model(
+        X_test=X_test, 
+        intercept=ridge_reg.intercept_, 
+        coefs=ridge_reg.coef_
+    )
+
+    # Calculate SSE score for the inliers
+    ridge_reg_sse = compute_SEE(y_real=y_train, y_predicted=ridge_reg_y_pred, inlier_mask=inlier_mask)
+
     # Print results for Ridge Regression
     print("---------------------------")
     print("Using " + Fore.YELLOW + "Ridge Regression" + Fore.RESET + ":")
     print(f"\tBest average score (R²) = {max_ridge_avg_scores} (lambda = {max_ridge_lambda})")
+    print(f"\tPrediction score for inliers (SSE) = {ridge_reg_sse} (lambda = {max_ridge_lambda})")
     print(f"\tModel parameters:")
     print(f"\t\tIntercept: {ridge_reg.intercept_}\n\t\tCoefficients: {ridge_reg.coef_}")
 
@@ -328,13 +324,13 @@ def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
     # Train Lasso Regression with different lambdas
     lasso_reg_avg_scores = []
     for alpha in lambdas:
-        lasso_reg = Lasso(alpha=alpha, fit_intercept=True, max_iter=5000).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+        lasso_reg = Lasso(alpha=alpha, fit_intercept=True, max_iter=5000).fit(X=X_clean, y=y_clean)
         
         # Perform cross-validation and calculate average score
         lasso_reg_scores = cross_validate(
             estimator=lasso_reg,
-            X=X_clean_shuffled,
-            y=y_clean_shuffled,
+            X=X_clean,
+            y=y_clean,
             cv=NUM_FOLDS
         )["test_score"]
         lasso_reg_avg_scores.append(sum(lasso_reg_scores) / NUM_FOLDS)
@@ -343,10 +339,24 @@ def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
     max_lasso_avg_scores = max(lasso_reg_avg_scores)
     max_lasso_lambda = lambdas[lasso_reg_avg_scores.index(max_lasso_avg_scores)]
 
+    # Refit with best found lambda to get access to the best coefs and intercept
+    lasso_reg = Lasso(alpha=max_lasso_lambda, fit_intercept=True, max_iter=5000).fit(X=X_clean, y=y_clean)
+    
+    # Compute prediction
+    lasso_reg_y_pred = toxic_algae_model(
+        X_test=X_test, 
+        intercept=lasso_reg.intercept_, 
+        coefs=lasso_reg.coef_
+    )
+
+    # Calculate SSE score for the inliers
+    lasso_reg_sse = compute_SEE(y_real=y_train, y_predicted=lasso_reg_y_pred, inlier_mask=inlier_mask)
+
     # Print results for Lasso Regression
     print("---------------------------")
     print("Using " + Fore.YELLOW + "Lasso Regression" + Fore.RESET + ":")
     print(f"\tBest average score (R²) = {max_lasso_avg_scores} (lambda = {max_lasso_lambda})")
+    print(f"\tPrediction score for inliers (SSE) = {lasso_reg_sse} (lambda = {max_lasso_lambda})")
     print(f"\tModel parameters:")
     print(f"\t\tIntercept: {lasso_reg.intercept_}\n\t\tCoefficients: {lasso_reg.coef_}")
 
@@ -358,13 +368,13 @@ def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
     max_elastic_net_avg_scores = 0
     for alpha in lambdas:
         for ratio in l1_ratio:
-            elastic_net_reg = ElasticNet(alpha=alpha, fit_intercept=True, l1_ratio=ratio, max_iter=6000).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+            elastic_net_reg = ElasticNet(alpha=alpha, fit_intercept=True, l1_ratio=ratio, max_iter=6000).fit(X=X_clean, y=y_clean)
             
             # Perform cross-validation and calculate average score
             elastic_net_reg_scores = cross_validate(
                 estimator=elastic_net_reg,
-                X=X_clean_shuffled,
-                y=y_clean_shuffled,
+                X=X_clean,
+                y=y_clean,
                 cv=NUM_FOLDS
             )["test_score"]
             elastic_net_reg_avg_scores.append(sum(elastic_net_reg_scores) / NUM_FOLDS)
@@ -372,12 +382,31 @@ def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
             # Track the best ElasticNet model based on average score
             if max(elastic_net_reg_avg_scores) > max_elastic_net_avg_scores:
                 max_elastic_net_lambda = alpha
-                max_elastic_ratio = ratio
+                max_elastic_net_ratio = ratio
+
+    # Refit with best found lambda to get access to the best coefs and intercept
+    elastic_net_reg = ElasticNet(
+        alpha=max_elastic_net_lambda, 
+        fit_intercept=True, 
+        l1_ratio=max_elastic_net_ratio, 
+        max_iter=6000
+    ).fit(X=X_clean, y=y_clean)
+
+    # Compute prediction
+    elastic_net_reg_y_pred = toxic_algae_model(
+        X_test=X_test, 
+        intercept=elastic_net_reg.intercept_, 
+        coefs=elastic_net_reg.coef_
+    )
+
+    # Calculate SSE score for the inliers
+    elastic_net_reg_sse = compute_SEE(y_real=y_train, y_predicted=elastic_net_reg_y_pred, inlier_mask=inlier_mask)
 
     # Print results for ElasticNet Regression
     print("---------------------------")
     print("Using " + Fore.YELLOW + "ElasticNet Regression" + Fore.RESET + ":")
-    print(f"\tBest average score (R²) = {max(elastic_net_reg_avg_scores)} (lambda = {max_elastic_net_lambda}, l1_ratio = {max_elastic_ratio})")
+    print(f"\tBest average score (R²) = {max(elastic_net_reg_avg_scores)} (lambda = {max_elastic_net_lambda}, l1_ratio = {max_elastic_net_ratio})")
+    print(f"\tPrediction score for inliers (SSE) = {elastic_net_reg_sse} (lambda = {max_elastic_net_lambda}, l1_ratio = {max_elastic_net_ratio})")
     print(f"\tModel parameters:")
     print(f"\t\tIntercept: {elastic_net_reg.intercept_}\n\t\tCoefficients: {elastic_net_reg.coef_}")
 
@@ -385,13 +414,13 @@ def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
     # Final comparison of models
     ############################
     # Store the R² scores for comparison
-    r_squared = [sum(linear_reg_scores)/NUM_FOLDS, max_ridge_avg_scores, max_lasso_avg_scores, max_elastic_net_avg_scores]
+    r_squared = [max_ridge_avg_scores, max_lasso_avg_scores, max_elastic_net_avg_scores]
+
+    # Store the SSE scores for comparison
+    sse = [lasso_reg_sse, ridge_reg_sse, elastic_net_reg_sse]
     
     # Determine the best model based on R²
-    if max(r_squared) == sum(linear_reg_scores) / NUM_FOLDS:
-        print("---------------------------")
-        print(f"Best model is Linear Regression with R² = {sum(linear_reg_scores) / NUM_FOLDS}")
-    elif max(r_squared) == max_ridge_avg_scores:
+    if max(r_squared) == max_ridge_avg_scores:
         print("---------------------------")
         print(f"Best model is Ridge Regression with R² = {max_ridge_avg_scores}")
     elif max(r_squared) == max_lasso_avg_scores:
@@ -400,6 +429,17 @@ def compare_models(X_clean: np.ndarray, y_clean: np.ndarray) -> None:
     elif max(r_squared) == max_elastic_net_avg_scores:
         print("---------------------------")
         print(f"Best model is ElasticNet Regression with R² = {max_elastic_net_avg_scores}")
+
+     # Determine the best model based on SSE
+    if min(sse) == ridge_reg_sse:
+        print("---------------------------")
+        print(f"Best model is Ridge Regression with SSE = {ridge_reg_sse}")
+    elif min(sse) == lasso_reg_sse:
+        print("---------------------------")
+        print(f"Best model is Lasso Regression with SSE = {lasso_reg_sse}")
+    elif min(sse) == elastic_net_reg_sse:
+        print("---------------------------")
+        print(f"Best model is ElasticNet Regression with SSE = {elastic_net_reg_sse}")
 
     ###############################
     # Plot Ridge Regression results
@@ -450,37 +490,33 @@ def chosen_model(X_clean: np.ndarray, y_clean: np.ndarray) -> Tuple[float, np.nd
     """
     # Set number of folds for cross-validation and the regularization parameter (alpha)
     NUM_FOLDS = 5
-    ALPHA = 10
+    BEST_ALPHA = 10
     
-    # Shuffle the clean data before training the model
-    X_clean_shuffled, y_clean_shuffled = shuffle_data(X=X_clean, y=y_clean)
+    # # Shuffle the clean data before training the model
+    # X_clean, y_clean = shuffle(X=X_clean, y=y_clean)
 
     # Chosen model
-    ridge_reg = Ridge(alpha=ALPHA, fit_intercept=True).fit(X=X_clean_shuffled, y=y_clean_shuffled)
+    ridge_reg = Ridge(alpha=BEST_ALPHA, fit_intercept=True).fit(X=X_clean, y=y_clean)
     
     # Perform cross-validation and store the results
     ridge_reg_scores = cross_validate(
         estimator=ridge_reg,
-        X=X_clean_shuffled,
-        y=y_clean_shuffled,
+        X=X_clean,
+        y=y_clean,
         cv=NUM_FOLDS
-    )
+    )["test_score"]
 
     # Extract the maximum R² score from the cross-validation results
-    max_ridge_scores = max(ridge_reg_scores["test_score"])
+    max_ridge_scores = max(ridge_reg_scores)
 
     # Print the results of the Ridge Regression model
     print("---------------------------")
     print("Using " + Fore.YELLOW + "Ridge Regression" + Fore.RESET + ":")
-    print(f"\tBest average score (R²) = {max_ridge_scores} (lambda = {ALPHA})")
+    print(f"\tBest average score (R²) = {max_ridge_scores} (lambda = {BEST_ALPHA})")
     print(f"\tModel parameters:")
     print(f"\t\tIntercept: {ridge_reg.intercept_}\n\t\tCoefficients: {ridge_reg.coef_}")
 
-    # Extract the model's coefficients and intercept
-    coefs = np.array(ridge_reg.coef_).flatten()
-    intercept = ridge_reg.intercept_ 
-
-    return intercept, coefs
+    return ridge_reg.intercept_, ridge_reg.coef_
 
 
 def main() -> None:
@@ -500,17 +536,28 @@ def main() -> None:
     )  # Training data for the model
 
     # Remove outliers from training data
-    X_clean, y_clean = remove_outliers_with_ransac(X_train=X_train, y_train=y_train)
+    X_clean, y_clean, inlier_mask = remove_outliers_with_ransac(X_train=X_train, y_train=y_train)
 
     # # Plot the cleaned training data
     # plot_training_data(X_train=X_clean, individual_plots=True)
 
-    # compare_models(X_clean=X_clean, y_clean=y_clean)
+    # compare_models(
+    #     X_clean=X_clean, 
+    #     y_clean=y_clean, 
+    #     X_test=X_test, 
+    #     y_train=y_train, 
+    #     inlier_mask=inlier_mask
+    # )
 
+    # Get β0 and βi
     intercept, coefficients = chosen_model(X_clean=X_clean, y_clean=y_clean)
 
     # Predict using the trained model
     y_pred = toxic_algae_model(X_test=X_test, intercept=intercept, coefs=coefficients)
+
+    # Calculate SSE score for the inliers
+    sse = compute_SEE(y_real=y_train, y_predicted=y_pred, inlier_mask=inlier_mask)
+    print(f"\tPrediction score for inliers (SSE) = {sse}")
 
     # Save the predictions to a file
     save_npy_to_output(file_name="y_pred.npy", data=y_pred)
