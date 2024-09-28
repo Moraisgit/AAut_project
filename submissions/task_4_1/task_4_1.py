@@ -269,7 +269,7 @@ def compare_models(
     y_clean (np.ndarray): The dependent variable (target) after outlier removal.
     """
     # Set number of folds for cross-validation and lambda values for regularization
-    NUM_FOLDS = 5
+    NUM_FOLDS = 8
     lambdas = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10]
     l1_ratio = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1] # For ElasticNet
 
@@ -489,7 +489,7 @@ def chosen_model(X_clean: np.ndarray, y_clean: np.ndarray) -> Tuple[float, np.nd
     Tuple[float, list[float]]: The intercept and coefficients of the Ridge Regression model.
     """
     # Set number of folds for cross-validation and the regularization parameter (alpha)
-    NUM_FOLDS = 5
+    NUM_FOLDS = 8
     BEST_ALPHA = 10
     
     # # Shuffle the clean data before training the model
