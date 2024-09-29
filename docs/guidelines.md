@@ -1,3 +1,5 @@
+# General
+
 submission
 zip file with
 - python code
@@ -5,6 +7,10 @@ zip file with
 
 x_train.numpy
 x_train 200x5
+
+# 4. Part 1 - Regression with Synthetic Data
+
+## 4.1 First Problem - Multiple Linear Regression with Outliers
 
 y_train.npy is the output for the training data x_train.npy
 
@@ -42,3 +48,15 @@ we cant identifie outliers just by looking at y values (big values)
 
 
 first we remove outliers, then we split training data in train and validation, and then we 
+
+## 4.2  Second Problem - The ARX model
+
+Estimate the theta parameters of the model based on Y and X
+
+The data that will be available is not the X and Y. We need to create X and Y based on the u's
+
+# 5. Part 2 - Image Analysis
+
+## 5.1 First Problem - Image classification
+
+## 5.2 Second Problem - image segmentation

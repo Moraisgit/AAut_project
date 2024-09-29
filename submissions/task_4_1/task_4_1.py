@@ -160,7 +160,6 @@ def plot_outliers_inliers(inlier_mask: np.ndarray, inliers: np.ndarray, outliers
     ax.set_xlim([-5, len(inliers) + 10])
 
     # Add title and labels for the second plot
-    ax.legend()
     ax.set_title(label="Inliers")
     ax.set_xlabel(xlabel="Samples")
     ax.set_ylabel(ylabel="Toxic algae concentration")
@@ -201,8 +200,8 @@ def remove_outliers_with_ransac(X_train: np.ndarray, y_train: np.ndarray) -> Tup
     X_outliers = X_train[~inlier_mask]
     y_outliers = y_train[~inlier_mask]
 
-    # Plot the inliers and outliers using the plot_outliers_inliers function
-    plot_outliers_inliers(inlier_mask=inlier_mask, inliers=y_inliers, outliers=y_outliers)
+    # # Plot the inliers and outliers using the plot_outliers_inliers function
+    # plot_outliers_inliers(inlier_mask=inlier_mask, inliers=y_inliers, outliers=y_outliers)
 
     # Print the number of inliers and outliers
     print(f"Number of inliers: {Fore.BLUE}{len(X_inliers)}{Fore.RESET}")
@@ -527,13 +526,13 @@ def main() -> None:
     """
     # Our output will be compared with the teachers output using SSE metric
     X_test = load_data(
-        filename=get_absolute_path("X_test.npy")
+        filename="X_test.npy"
     )  # Test data for the model
     y_train = load_data(
-        filename=get_absolute_path("y_train.npy")
+        filename="y_train.npy"
     )  # Expected output for the training data
     X_train = load_data(
-        filename=get_absolute_path("X_train.npy")
+        filename="X_train.npy"
     )  # Training data for the model
 
     # Remove outliers from training data
@@ -561,7 +560,8 @@ def main() -> None:
     print(f"\tPrediction score for inliers (SSE) = {sse}")
 
     # Save the predictions to a file
-    save_npy_to_output(file_name="y_pred.npy", data=y_pred)
+    np.save("y_pred.npy", y_pred)
+    # save_npy_to_output(file_name="y_pred.npy", data=y_pred)
 
 
 if __name__ == "__main__":
