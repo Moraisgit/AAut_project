@@ -88,6 +88,35 @@ def tune_nmd(y_train, u_train, alpha, n_range, m_range, d_range):
     return best_params, best_score
 
 
+# Function to predict the output recursively for the test set
+def recursive_predict(y_train, u_test, n, m, d, model):
+    N = len(u_test)
+    p = max(n, d + m)
+
+    # Initialize the predicted output with zeros initially
+    y_pred = np.zeros(N)
+
+    # Set initial conditions using the last n values of y_train
+    y_pred[:p] = y_train[-p:]
+
+    # Predict y(k) iteratively for the test set
+    for k in range(p, N):
+        # Collect the past n values of y_pred
+        phi_y = [y_pred[k - i] for i in range(1, n + 1)]
+
+        # Collect the past m+1 values of u_test
+        phi_u = [u_test[k - d - i] for i in range(0, m + 1)]
+
+        # Concatenate phi_y and phi_u to form the full regressor
+        phi = np.concatenate([phi_y, phi_u])
+
+        # Predict y(k) using the trained model
+        y_pred[k] = model.predict([phi])[0]
+
+    # Return the full predicted output
+    return y_pred
+
+
 def main():
     # Load the data
     u_test = load_data(
@@ -116,6 +145,13 @@ def main():
     # Output the R^2 score and coefficients
     print(f"R^2 score: {r2}")
     print(f"Ridge coefficients: {ridge_reg.coef_}")
+
+    # Predict the output recursively for the test set
+    y_pred_test = recursive_predict(y_train, u_test, n, m, d, ridge_reg)
+
+    # Output the last 400 elements of the predicted y_test
+    y_pred_last_400 = y_pred_test[-400:]  # From index 110 to 509 in the test data
+    save_npy_to_output("y_pred_4.2", y_pred_last_400)
 
     # Define the range of parameters to try
     # n_range = range(1, 10)  # n from 1 to 9
