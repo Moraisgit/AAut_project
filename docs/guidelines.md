@@ -55,6 +55,25 @@ Estimate the theta parameters of the model based on Y and X
 
 The data that will be available is not the X and Y. We need to create X and Y based on the u's
 
+output at time k depends on previous inputs and outputs
+
+delay parameters are m, n, d are between 0<=m, n, d<10
+
+as an example, n=2,d=0, m=3:
+- y(3)=-a1y(2)-a2y(1)+b0u(3)+b1u(2)+b2u(1)
+- y(4)=-a1y(3)-a2y(2)+b0u(4)+b1u(3)+b2u(2)
+
+Y=X\theta
+
+y_hat needs to be size 400x1 
+
+the pred for the train can be at once beacause we have thetas but for the y_pred_test needs to be one by one, obtained iteratively
+
+# A fazer para este lab:
+
+Separar os dados de treino em treino e validação SEM CROSS-VALIDATION porque a ordem da data é importante
+
+
 # 5. Part 2 - Image Analysis
 
 ## 5.1 First Problem - Image classification

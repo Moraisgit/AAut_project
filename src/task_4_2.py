@@ -2,11 +2,10 @@ import numpy as np
 from utils import get_absolute_path, load_data, save_npy_to_output
 from sklearn.linear_model import Ridge
 from itertools import product
-from sklearn.model_selection import cross_validate, cross_val_score
+from sklearn.model_selection import cross_validate, cross_val_score, train_test_split
 from sklearn.metrics import r2_score
 
 
-# Function to construct the regression matrix
 def regression_matrix(y, u, n, m, d):
     N = len(y)
     p = max(n, d + m)
@@ -37,59 +36,62 @@ def regression_matrix(y, u, n, m, d):
     return np.array(X), np.array(Y)
 
 
-def teste_alphas(X_train: np.ndarray, Y_train: np.ndarray):
+def compute_SEE(y_real: np.ndarray, y_predicted: np.ndarray) -> float:
+    """
+    Calculate the Sum of Squared Errors (SSE) between the actual and predicted values.
 
-    lambdas = [0.5, 0.44, 0.43, 0.42, 0.41, 0.40, 0.39, 0.38, 0.37, 0.36, 0.35, 0]
-    NUM_FOLDS = 8
+    Parameters:
+    y_real (np.ndarray): The actual target values (observed).
+    y_predicted (np.ndarray): The predicted target values from the model.
 
-    ridge_reg_avg_scores = []
-    for alpha in lambdas:
-        ridge_reg = Ridge(alpha=alpha, fit_intercept=True).fit(X=X_train, y=Y_train)
+    Returns:
+    float: The Sum of Squared Errors (SSE) for inliers.
+    """
 
-        # Perform cross-validation and calculate average score
-        ridge_reg_scores = cross_validate(
-            estimator=ridge_reg, X=X_train, y=Y_train, cv=NUM_FOLDS
-        )["test_score"]
-        ridge_reg_avg_scores.append(sum(ridge_reg_scores) / NUM_FOLDS)
-
-    # Find best lambda value and corresponding score for Ridge Regression
-    max_ridge_avg_scores = max(ridge_reg_avg_scores)
-    max_ridge_lambda = lambdas[ridge_reg_avg_scores.index(max_ridge_avg_scores)]
-
-    # Refit with best found lambda to get access to the best coefs and intercept
-    ridge_reg = Ridge(alpha=max_ridge_lambda, fit_intercept=True, max_iter=5000).fit(
-        X=X_train, y=Y_train
-    )
-    print(
-        f"\tBest average score (R²) = {max_ridge_avg_scores} (lambda = {max_ridge_lambda})"
-    )
+    # Compute SSE for the inliers
+    return np.sum((y_real - y_predicted)**2)
 
 
-# Function to test different combinations of n, m, d with a constant alpha
-def tune_nmd(y_train, u_train, alpha, n_range, m_range, d_range):
-    best_score = -np.inf
+def find_best_parameters(y_train, u_train):
+    n_range = range(0, 10, 1)
+    m_range = range(0, 10, 1)
+    d_range = range(0, 10, 1)
+    best_score = np.inf
     best_params = None
+    lambda_values = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10]
 
-    # Iterate over all combinations of n, m, and d
-    for n, m, d in product(n_range, m_range, d_range):
-        X_train, Y_train = regression_matrix(y_train, u_train, n, m, d)
+    for n, m, d, alpha in product(n_range, m_range, d_range, lambda_values):
+        X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=m, d=d)
 
-        # Train the Ridge regression model with a constant alpha
-        ridge_reg = Ridge(alpha=alpha, fit_intercept=True)
+        if X_train_matrix.shape[0] < 10:
+            continue
 
-        # Perform 5-fold cross-validation and compute mean R² score
-        r2 = np.mean(cross_val_score(ridge_reg, X_train, Y_train, cv=5, scoring="r2"))
+        X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
+            X_train_matrix, 
+            y_train_matrix, 
+            test_size=0.2, 
+            shuffle=False
+        )
 
-        # Track the best combination of parameters
-        if r2 > best_score:
-            best_score = r2
-            best_params = (n, m, d)
+        ridge_reg = Ridge(
+            alpha=alpha, 
+            fit_intercept=True
+        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
 
-    return best_params, best_score
+        y_pred = ridge_reg.predict(X=X_val_matrix_split)
+
+        score = compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred)
+
+        if score < best_score:
+            best_score = score
+            best_params = (n, m, d, alpha)
+
+    return best_params
 
 
-# Function to predict the output recursively for the test set
-def recursive_predict(y_train, u_test, n, m, d, model):
+def recursive_predict(y_train, u_test, model, best_params):
+    n, m, d, _ = best_params
+
     N = len(u_test)
     p = max(n, d + m)
 
@@ -117,6 +119,29 @@ def recursive_predict(y_train, u_test, n, m, d, model):
     return y_pred
 
 
+def chosen_model_with_best_parameters(y_train, u_train, best_params):
+    n, m, d, alpha = best_params
+
+    X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=m, d=d)
+
+    X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
+        X_train_matrix, 
+        y_train_matrix, 
+        test_size=0.2, 
+        shuffle=False
+    )
+
+    model_reg = Ridge(
+        alpha=alpha, 
+        fit_intercept=True
+    ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
+
+    y_pred = model_reg.predict(X=X_val_matrix_split)
+
+    score = compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred)
+
+    return model_reg
+
 def main():
     # Load the data
     u_test = load_data(
@@ -129,41 +154,22 @@ def main():
         filename=get_absolute_path("u_train.npy")
     )  # Input data for the training
 
-    n, m, d, alpha = 9, 9, 6, 0
-    X_train, Y_train = regression_matrix(y_train, u_train, n, m, d)
+    # best_params = find_best_parameters(y_train=y_train, u_train=u_train)
 
-    # Fit the final Ridge model with the best parameters
-    ridge_reg = Ridge(alpha=alpha, fit_intercept=True)
-    ridge_reg.fit(X=X_train, y=Y_train)
+    # BEST PARAMETERS
+    BEST_N=9
+    BEST_M=9
+    BEST_D=6
+    BEST_ALPHA=1e-05
+    best_params = (BEST_N, BEST_M, BEST_D, BEST_ALPHA)
 
-    # Predict the output using the fitted Ridge regression model
-    Y_pred = ridge_reg.predict(X_train)
+    model_reg = chosen_model_with_best_parameters(y_train=y_train, u_train=u_train, best_params=best_params)
 
-    # Calculate the R^2 score
-    r2 = r2_score(Y_train, Y_pred)
-
-    # Output the R^2 score and coefficients
-    print(f"R^2 score: {r2}")
-    print(f"Ridge coefficients: {ridge_reg.coef_}")
-
-    # Predict the output recursively for the test set
-    y_pred_test = recursive_predict(y_train, u_test, n, m, d, ridge_reg)
+    y_pred = recursive_predict(y_train, u_test, model=model_reg, best_params=best_params)
 
     # Output the last 400 elements of the predicted y_test
-    y_pred_last_400 = y_pred_test[-400:]  # From index 110 to 509 in the test data
-    save_npy_to_output("y_pred_4.2", y_pred_last_400)
-
-    # Define the range of parameters to try
-    # n_range = range(1, 10)  # n from 1 to 9
-    # m_range = range(1, 10)  # m from 1 to 9
-    # d_range = range(0, 10)  # d from 0 to 9
-
-    # Define a constant alpha value
-    # alpha = 0.5
-
-    # Tune n, m, d parameters
-    # best_params, best_score = tune_nmd(y_train, u_train, alpha, n_range, m_range, d_range)
-    # print(f"\nBest parameters (n, m, d): {best_params}, Best R²: {best_score:.5f}")
+    y_pred_last_400 = y_pred[-400:]  # From index 110 to 509 in the test data
+    save_npy_to_output("y_pred", y_pred_last_400)
 
 
 if __name__ == "__main__":
