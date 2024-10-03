@@ -1,12 +1,318 @@
 import numpy as np
-from utils import get_absolute_path, load_data, save_npy_to_output
-from sklearn.linear_model import Ridge
+from utils import get_absolute_path, load_data, save_npy_to_output, get_plot_save_path
+from sklearn.linear_model import Ridge, Lasso, ElasticNet, LinearRegression
 from itertools import product
-from sklearn.model_selection import cross_validate, cross_val_score, train_test_split
-from sklearn.metrics import r2_score
+from sklearn.model_selection import train_test_split
+from colorama import Fore
+import matplotlib.pyplot as plt
+from typing import Tuple
 
 
-def regression_matrix(y, u, n, m, d):
+def plot_u_and_y(y: np.array, u: np.array) -> None:
+    """
+    Plot the time series data for y and u on the same plot.
+
+    Parameters:
+    y (np.array): The target variable data to be plotted.
+    u (np.array): The input variable data to be plotted.
+    """
+    time = np.arange(len(y))  # Create a time axis based on the length of the arrays
+
+    # Create a figure and axis
+    plt.figure()
+
+    # Plot u
+    plt.plot(time, u, label='Input')
+
+    # Plot y
+    plt.plot(time, y, label='Output')
+
+    # Adding titles and labels
+    plt.title('Input and Output Signals')
+    plt.xlabel('Time')
+    plt.ylabel('Amplitude')
+    plt.legend()
+    plt.grid(True)
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_sse_and_parameters(y_train: np.array, u_train: np.array, best_params: list) -> None:
+    """
+    Generate and plot the Sum of Squared Errors (SSE) for various combinations of model parameters (n, m, d).
+
+    Parameters:
+    y_train (np.ndarray): The actual target values for training.
+    u_train (np.ndarray): The feature values for training.
+    best_params (tuple): A tuple containing the best parameters (BEST_N, BEST_M, BEST_D, BEST_ALPHA).
+
+    Returns:
+    None: Displays plots and saves them as images.
+    """
+    
+    BEST_N, BEST_M, BEST_D, BEST_ALPHA = best_params
+    n_values = range(0, 10, 1)  # Possible values for parameter n
+    m_values = range(0, 10, 1)  # Possible values for parameter m
+    d_values = range(0, 10, 1)  # Possible values for parameter d
+
+    ##########################################
+    # Make plot of SSE depending on n, m and d
+    ##########################################
+    sse = []
+    combinations = []
+    
+    # Iterate over all combinations of n, m, d
+    for n, m, d in product(n_values, m_values, d_values):
+        X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=m, d=d)
+
+        # Skip if the matrix is too small
+        if X_train_matrix.shape[0] < 10:
+            continue
+
+        # Split data into training and validation sets
+        X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
+            X_train_matrix, 
+            y_train_matrix, 
+            test_size=0.2, 
+            shuffle=False
+        )
+
+        # Train the Ridge regression model
+        model_reg = Ridge(
+            alpha=BEST_ALPHA, 
+            fit_intercept=True
+        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
+
+        # Make predictions on the validation set
+        y_pred = model_reg.predict(X=X_val_matrix_split)
+
+        # Calculate SSE and store it
+        sse.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
+        combinations.append((n, m, d))
+
+    # Convert combinations to arrays
+    n_values = np.array([c[0] for c in combinations])
+    m_values = np.array([c[1] for c in combinations])
+    d_values = np.array([c[2] for c in combinations])
+    sse = np.array(sse)
+
+    # Find the index of the minimum SSE value
+    min_sse_idx = np.argmin(sse)
+
+    # Set the sizes of the points, making the minimum SSE point bigger
+    sizes = np.full_like(sse, fill_value=20)
+    sizes[min_sse_idx] = 100
+
+    # Plot SSE values for different combinations of n, m, and d
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    scatter = ax.scatter(n_values, m_values, d_values, c=sse, s=sizes, cmap='viridis')
+
+    # Set axis labels and title
+    ax.set_xlabel('n')
+    ax.set_ylabel('m')
+    ax.set_zlabel('d')
+    ax.set_title('SSE for combinations of (n, m, d)')
+
+    # Set limits for each axis
+    ax.set_xlim(-0.5, 9.5)
+    ax.set_ylim(-0.5, 9.5)
+    ax.set_zlim(-0.5, 9.5)
+
+    # Set ticks for each axis
+    ax.set_xticks(np.arange(0, 10, 1))
+    ax.set_yticks(np.arange(0, 10, 1))
+    ax.set_zticks(np.arange(0, 10, 1))
+
+    # Add a color bar to show SSE values
+    color_bar = plt.colorbar(scatter, ax=ax)
+    color_bar.set_label('SSE')
+
+    # Highlight the minimum SSE point
+    ax.scatter(n_values[min_sse_idx], m_values[min_sse_idx], d_values[min_sse_idx], 
+               color='red', s=150, edgecolors='black', label='Min SSE')
+
+    ax.legend()
+    # Adjust layout and save the plot
+    plt.tight_layout()
+    plt.savefig(get_plot_save_path("SSE_n_m_d"), bbox_inches='tight')
+
+    #################################
+    # Make plot of SSE depending on n
+    #################################
+    sse = []
+    for n in n_values:
+        X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=BEST_M, d=BEST_D)
+
+        # Skip if the matrix is too small
+        if X_train_matrix.shape[0] < 10:
+            continue
+
+        # Split data into training and validation sets
+        X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
+            X_train_matrix, 
+            y_train_matrix, 
+            test_size=0.2, 
+            shuffle=False
+        )
+
+        # Train the Ridge regression model
+        model_reg = Ridge(
+            alpha=BEST_ALPHA, 
+            fit_intercept=True
+        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
+
+        # Make predictions on the validation set
+        y_pred = model_reg.predict(X=X_val_matrix_split)
+
+        # Calculate SSE and store it
+        sse.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
+
+    # Plot SSE vs n
+    fig, ax = plt.subplots()
+
+    ax.plot(n_values, sse, marker='o', linestyle='-')
+    ax.set_xlabel(xlabel='n')
+    ax.set_ylabel(ylabel='SSE')
+    ax.set_title(label='SSE for different values of n (with m=9 and d=6)')
+
+    ax.set_xlim(left=-0.5, right=9.5)
+    ax.set_xticks(np.arange(0, 10, 1))
+
+    plt.tight_layout()
+    plt.savefig(get_plot_save_path("SSE_n"), bbox_inches='tight')
+
+    #################################
+    # Make plot of SSE depending on m
+    #################################
+    sse = []
+    for m in m_values:
+        X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=BEST_N, m=m, d=BEST_D)
+
+        # Skip if the matrix is too small
+        if X_train_matrix.shape[0] < 10:
+            continue
+
+        # Split data into training and validation sets
+        X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
+            X_train_matrix, 
+            y_train_matrix, 
+            test_size=0.2, 
+            shuffle=False
+        )
+
+        # Train the Ridge regression model
+        model_reg = Ridge(
+            alpha=BEST_ALPHA, 
+            fit_intercept=True
+        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
+
+        # Make predictions on the validation set
+        y_pred = model_reg.predict(X=X_val_matrix_split)
+
+        # Calculate SSE and store it
+        sse.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
+
+    # Plot SSE vs m
+    fig, ax = plt.subplots()
+
+    # Now plot the SSE values vs m
+    ax.plot(m_values, sse, marker='o', linestyle='-')
+    ax.set_xlabel(xlabel='m')
+    ax.set_ylabel(ylabel='SSE')
+    ax.set_title(label='SSE for different values of m (with n=9 and d=6)')
+
+    ax.set_xlim(left=-0.5, right=9.5)
+    ax.set_xticks(np.arange(0, 10, 1))
+
+    plt.tight_layout()
+    plt.savefig(get_plot_save_path("SSE_m"), bbox_inches='tight')
+
+    #################################
+    # Make plot of SSE depending on d
+    #################################
+    sse = []
+    for d in d_values:
+        X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=BEST_N, m=BEST_M, d=d)
+
+        # Skip if the matrix is too small
+        if X_train_matrix.shape[0] < 10:
+            continue
+
+        # Split data into training and validation sets
+        X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
+            X_train_matrix, 
+            y_train_matrix, 
+            test_size=0.2, 
+            shuffle=False
+        )
+
+        # Train the Ridge regression model
+        model_reg = Ridge(
+            alpha=BEST_ALPHA, 
+            fit_intercept=True
+        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
+
+        # Make predictions on the validation set
+        y_pred = model_reg.predict(X=X_val_matrix_split)
+
+        # Calculate SSE and store it
+        sse.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
+
+    # Plot SSE vs d
+    fig, ax = plt.subplots()
+
+    # Now plot the SSE values vs d
+    ax.plot(d_values, sse, marker='o', linestyle='-')
+    ax.set_xlabel(xlabel='d')
+    ax.set_ylabel(ylabel='SSE')
+    ax.set_title(label='SSE for different values of d (with n=9 and m=9)')
+
+    ax.set_xlim(left=-0.5, right=9.5)
+    ax.set_xticks(np.arange(0, 10, 1))
+
+    plt.tight_layout()
+
+    #####################
+    # Show all made plots
+    #####################
+    plt.show()
+
+
+def compute_SEE(y_real: np.ndarray, y_predicted: np.ndarray) -> float:
+    """
+    Calculate the Sum of Squared Errors (SSE) between the actual and predicted values.
+
+    Parameters:
+    y_real (np.ndarray): The actual target values (observed).
+    y_predicted (np.ndarray): The predicted target values from the model.
+
+    Returns:
+    float: The Sum of Squared Errors (SSE).
+    """
+
+    # Compute SSE for the inliers
+    return np.sum((y_real - y_predicted)**2)
+
+
+def regression_matrix(y: np.array, u: np.array, n: int, m: int, d: int) -> Tuple[np.array, np.array]:
+    """
+    Constructs a regression matrix based on past values of the dependent variable y and the independent variable u.
+
+    Parameters:
+    y (np.array): The dependent variable values (observed).
+    u (np.array): The independent variable values (input).
+    n (int): The n parameter.
+    m (int): The m parameter.
+    d (int): The d parameter.
+
+    Returns:
+    Tuple[np.array, np.array]:
+        - X (np.array): The regressor matrix X
+        - Y (np.array): The output vector Y
+    """
     N = len(y)
     p = max(n, d + m)
 
@@ -36,36 +342,46 @@ def regression_matrix(y, u, n, m, d):
     return np.array(X), np.array(Y)
 
 
-def compute_SEE(y_real: np.ndarray, y_predicted: np.ndarray) -> float:
+def find_parameters_and_compare_models(y_train: np.array, u_train: np.array) -> None:
     """
-    Calculate the Sum of Squared Errors (SSE) between the actual and predicted values.
+    Finds the best hyperparameters for various regression models (Linear, Ridge, Lasso, ElasticNet) 
+    by comparing their performance on training data.
 
     Parameters:
-    y_real (np.ndarray): The actual target values (observed).
-    y_predicted (np.ndarray): The predicted target values from the model.
+    y_train (np.array): The dependent variable training data.
+    u_train (np.array): The independent variable training data.
 
     Returns:
-    float: The Sum of Squared Errors (SSE) for inliers.
+    None: The function prints the best parameters and scores for each regression model.
     """
-
-    # Compute SSE for the inliers
-    return np.sum((y_real - y_predicted)**2)
-
-
-def find_best_parameters(y_train, u_train):
-    n_range = range(0, 10, 1)
-    m_range = range(0, 10, 1)
-    d_range = range(0, 10, 1)
-    best_score = np.inf
-    best_params = None
+    
+    # Define ranges for parameters and hyperparameters
+    n_values = range(0, 10, 1)
+    m_values = range(0, 10, 1)
+    d_values = range(0, 10, 1)
     lambda_values = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10]
+    l1_ratio_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
 
-    for n, m, d, alpha in product(n_range, m_range, d_range, lambda_values):
+    # Initialize best scores and parameters list for each model
+    best_score_linear = np.inf
+    best_score_ridge = np.inf
+    best_score_lasso = np.inf
+    best_score_elastic_net = np.inf
+    best_params_linear = None
+    best_params_ridge = None
+    best_params_lasso = None
+    best_params_elastic_net = None
+
+    # Iterate through all combinations of n, m, d, and alpha
+    for n, m, d, alpha in product(n_values, m_values, d_values, lambda_values):
+        # Create the regression matrix for the current parameter set
         X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=m, d=d)
 
+        # Skip if there are not enough samples to split - 10 could be another arbitrary number
         if X_train_matrix.shape[0] < 10:
             continue
 
+        # Split the dataset into training and validation sets
         X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
             X_train_matrix, 
             y_train_matrix, 
@@ -73,32 +389,125 @@ def find_best_parameters(y_train, u_train):
             shuffle=False
         )
 
-        ridge_reg = Ridge(
-            alpha=alpha, 
-            fit_intercept=True
-        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
+        ########################
+        # Test Linear Regression
+        ########################
+        linear_reg = LinearRegression(fit_intercept=True)
+        linear_reg.fit(X=X_train_matrix_split, y=y_train_matrix_split)
 
-        y_pred = ridge_reg.predict(X=X_val_matrix_split)
-
+        # Predict and compute the score
+        y_pred = linear_reg.predict(X=X_val_matrix_split)
         score = compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred)
 
-        if score < best_score:
-            best_score = score
-            best_params = (n, m, d, alpha)
+        # Update best score and parameters if the current score is better
+        if score < best_score_linear:
+            best_score_linear = score
+            best_params_linear = (n, m, d)
 
-    return best_params
+        #######################
+        # Test Ridge Regression
+        #######################
+        ridge_reg = Ridge(alpha=alpha, fit_intercept=True)
+        ridge_reg.fit(X=X_train_matrix_split, y=y_train_matrix_split)
+
+        # Predict and compute the score
+        y_pred = ridge_reg.predict(X=X_val_matrix_split)
+        score = compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred)
+
+        # Update best score and parameters if the current score is better
+        if score < best_score_ridge:
+            best_score_ridge = score
+            best_params_ridge = (n, m, d, alpha)
+
+        #######################
+        # Test Lasso Regression
+        #######################
+        lasso_reg = Lasso(alpha=alpha, fit_intercept=True, max_iter=50000)
+        lasso_reg.fit(X=X_train_matrix_split, y=y_train_matrix_split)
+
+        # Predict and compute the score
+        y_pred = lasso_reg.predict(X=X_val_matrix_split)
+        score = compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred)
+
+        # Update best score and parameters if the current score is better
+        if score < best_score_lasso:
+            best_score_lasso = score
+            best_params_lasso = (n, m, d, alpha)
+
+        ################################################
+        # Test ElasticNet Regression
+        ################################################
+        for l1_ratio in l1_ratio_values:
+            elastic_net_reg = ElasticNet(
+                alpha=alpha, 
+                l1_ratio=l1_ratio,
+                fit_intercept=True,
+                max_iter=50000
+            )
+            elastic_net_reg.fit(X=X_train_matrix_split, y=y_train_matrix_split)
+
+            # Predict and compute the score
+            y_pred = elastic_net_reg.predict(X=X_val_matrix_split)
+            score = compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred)
+
+            # Update best score and parameters if the current score is better
+            if score < best_score_elastic_net:
+                best_score_elastic_net = score
+                best_params_elastic_net = (n, m, d, alpha, l1_ratio)
+
+    # Print results for Linear Regression
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "Linear Regression" + Fore.RESET + ":")
+    print(f"\tBest parameters:")
+    print(f"\t\tn = {best_params_linear[0]} \n\t\tm = {best_params_linear[1]} \n\t\td = {best_params_linear[2]}")
+    print(f"\tPrediction score (SSE) = {best_score_linear}")
+
+    # Print results for Ridge Regression
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "Ridge Regression" + Fore.RESET + ":")
+    print(f"\tBest parameters:")
+    print(f"\t\tn = {best_params_ridge[0]} \n\t\tm = {best_params_ridge[1]} \n\t\td = {best_params_ridge[2]} \n\t\tlambda = {best_params_ridge[3]}")
+    print(f"\tPrediction score (SSE) = {best_score_ridge}")
+
+    # Print results for Lasso Regression
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "Lasso Regression" + Fore.RESET + ":")
+    print(f"\tBest parameters:")
+    print(f"\t\tn = {best_params_lasso[0]} \n\t\tm = {best_params_lasso[1]} \n\t\td = {best_params_lasso[2]} \n\t\tlambda = {best_params_lasso[3]}")
+    print(f"\tPrediction score (SSE) = {best_score_lasso}")
+
+    # Print results for ElasticNet Regression
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "ElasticNet Regression" + Fore.RESET + ":")
+    print(f"\tBest parameters:")
+    print(f"\t\tn = {best_params_elastic_net[0]} \n\t\tm = {best_params_elastic_net[1]} \n\t\td = {best_params_elastic_net[2]} \n\t\tlambda = {best_params_elastic_net[3]} \n\t\tL1 ratio = {best_params_elastic_net[4]}")
+    print(f"\tPrediction score (SSE) = {best_score_elastic_net}")
 
 
-def recursive_predict(y_train, u_test, model, best_params):
-    n, m, d, _ = best_params
+def recursive_predict(y_train: np.array, u_test: np.array, model, best_params: list) -> np.array:
+    """
+    Predict future values using a recursive approach based on the trained model 
+    and provided input data.
 
-    N = len(u_test)
-    p = max(n, d + m)
+    Parameters:
+    y_train (np.array): The training target values.
+    u_test (np.array): The test input values to be used for predictions.
+    model: The trained regression model used for predictions.
+    best_params (list): A list containing the best parameters [n, m, d, alpha] 
+                        used for constructing the prediction.
 
-    # Initialize the predicted output with zeros initially
+    Returns:
+    np.array: An array of predicted values for the test set.
+    """
+    n, m, d, _ = best_params  # Unpack parameters for prediction
+
+    N = len(u_test)  # Length of the test input array
+    p = max(n, d + m)  # Calculate the required past values for prediction
+
+    # Initialize the predicted output array with zeros
     y_pred = np.zeros(N)
 
-    # Set initial conditions using the last n values of y_train
+    # Set initial conditions using the last p values from the training target values
     y_pred[:p] = y_train[-p:]
 
     # Predict y(k) iteratively for the test set
@@ -115,15 +524,29 @@ def recursive_predict(y_train, u_test, model, best_params):
         # Predict y(k) using the trained model
         y_pred[k] = model.predict([phi])[0]
 
-    # Return the full predicted output
     return y_pred
 
 
-def chosen_model_with_best_parameters(y_train, u_train, best_params):
-    n, m, d, alpha = best_params
+def chosen_model_with_best_parameters(y_train: np.array, u_train: np.array, best_params: list):
+    """
+    Train a regression model using the specified best parameters and evaluate 
+    its performance on a validation set.
 
+    Parameters:
+    y_train (np.array): The training target values.
+    u_train (np.array): The training input values used for predictions.
+    best_params (list): A list containing the best parameters [n, m, d, alpha] 
+                        for constructing the regression model.
+
+    Returns:
+    model_reg: The trained Ridge Regression model.
+    """
+    n, m, d, alpha = best_params  # Unpack the best parameters for the regression model
+
+    # Create the regression matrix from the training data
     X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=m, d=d)
 
+    # Split the data into training and validation sets
     X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
         X_train_matrix, 
         y_train_matrix, 
@@ -131,16 +554,27 @@ def chosen_model_with_best_parameters(y_train, u_train, best_params):
         shuffle=False
     )
 
+    # Ridge Regression model
     model_reg = Ridge(
         alpha=alpha, 
         fit_intercept=True
     ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
 
+    # Predict the target values for the validation set
     y_pred = model_reg.predict(X=X_val_matrix_split)
 
+    # Calculate the prediction score using SSE
     score = compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred)
 
+    # Print the results for the Ridge Regression model
+    print("---------------------------")
+    print("Using " + Fore.YELLOW + "Ridge Regression" + Fore.RESET + ":")
+    print(f"\tBest parameters:")
+    print(f"\t\tn = {best_params[0]} \n\t\tm = {best_params[1]} \n\t\td = {best_params[2]} \n\t\tlambda = {best_params[3]}")
+    print(f"\tPrediction score (SSE) = {score}")
+
     return model_reg
+
 
 def main():
     # Load the data
@@ -154,7 +588,7 @@ def main():
         filename=get_absolute_path("u_train.npy")
     )  # Input data for the training
 
-    # best_params = find_best_parameters(y_train=y_train, u_train=u_train)
+    # find_parameters_and_compare_models(y_train=y_train, u_train=u_train)
 
     # BEST PARAMETERS
     BEST_N=9
@@ -162,6 +596,10 @@ def main():
     BEST_D=6
     BEST_ALPHA=1e-05
     best_params = (BEST_N, BEST_M, BEST_D, BEST_ALPHA)
+
+    # plot_u_and_y(y=y_train, u=u_train)
+
+    # plot_sse_and_parameters(y_train=y_train, u_train=u_train, best_params=best_params)
 
     model_reg = chosen_model_with_best_parameters(y_train=y_train, u_train=u_train, best_params=best_params)
 
