@@ -46,26 +46,37 @@ def get_absolute_path(file_name: str) -> str:
         raise FileNotFoundError(f"{file_name} not found in {data_dir}")
 
 
-def save_npy_to_output(file_name, data):
-    # Initialize colorama
+def save_npy_to_output(file_name: str, data: np.array) -> None:
+    """
+    Save a NumPy array to a .npy file in the 'output' directory of the project.
+
+    Parameters:
+    file_name (str): The name to save the file as, including the .npy extension.
+    data (np.array): The NumPy array to be saved.
+    
+    Returns:
+    None
+    """
+    # Initialize colorama to use colored output in the terminal
     init()
-    # Get the project root directory
+
+    # Get the project root directory by navigating one level up from the current script's directory
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-    # Construct the path to the 'output' directory
+    # Construct the path to the 'output' directory within the project root
     output_dir = os.path.join(project_root, "output")
 
-    # Ensure the output directory exists
+    # If the 'output' directory doesn't exist, create it
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Construct the full file path
+    # Construct the full file path by combining the output directory and the provided file name
     file_path = os.path.join(output_dir, file_name)
 
-    # Save the .npy file
+    # Save the provided NumPy array to a .npy file at the constructed file path
     np.save(file_path, data)
 
-    # Print the file path with color
+    # Print the full path to the saved file using blue text for the file path
     print(f"File saved at: {Fore.BLUE}{file_path}{Fore.RESET}")
 
 

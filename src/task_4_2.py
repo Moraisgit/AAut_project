@@ -1,41 +1,54 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from utils import get_absolute_path, load_data, save_npy_to_output, get_plot_save_path
 from sklearn.linear_model import Ridge, Lasso, ElasticNet, LinearRegression
 from itertools import product
 from sklearn.model_selection import train_test_split
 from colorama import Fore
-import matplotlib.pyplot as plt
 from typing import Tuple
 
 
-def plot_u_and_y(y: np.array, u: np.array) -> None:
+def plot_u_and_y(y: np.array, u: np.array, train: bool = True) -> None:
     """
     Plot the time series data for y and u on the same plot.
 
     Parameters:
     y (np.array): The target variable data to be plotted.
     u (np.array): The input variable data to be plotted.
+    train (bool): Flag to indicate if the plot is for training or testing data. 
+                  Defaults to True. Saves the plot with a different name based on this flag.
+    
+    Returns:
+    None
     """
     time = np.arange(len(y))  # Create a time axis based on the length of the arrays
 
     # Create a figure and axis
-    plt.figure()
+    fig, ax = plt.subplots()
 
     # Plot u
-    plt.plot(time, u, label='Input')
+    ax.plot(time, u, label='Input')
 
     # Plot y
-    plt.plot(time, y, label='Output')
+    ax.plot(time, y, label='Output')
 
     # Adding titles and labels
-    plt.title('Input and Output Signals')
-    plt.xlabel('Time')
-    plt.ylabel('Amplitude')
-    plt.legend()
-    plt.grid(True)
+    ax.set_title('Input and Output Signals')
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Amplitude')
+    ax.legend()
+    ax.grid(True)
+
+    # Adjust layout to ensure everything fits
+    plt.tight_layout()
+
+    # Save the plot depending on whether it's training or testing data
+    if train:
+        plt.savefig(get_plot_save_path("Input_Output_train"), bbox_inches='tight')
+    else:
+        plt.savefig(get_plot_save_path("Input_Output_test"), bbox_inches='tight')
 
     # Show the plot
-    plt.tight_layout()
     plt.show()
 
 
@@ -435,7 +448,7 @@ def find_parameters_and_compare_models(y_train: np.array, u_train: np.array) -> 
             best_params_lasso = (n, m, d, alpha)
 
         ################################################
-        # Test ElasticNet Regression
+        # Test ElasticNet Regression - THIS DOES NOT RUN
         ################################################
         for l1_ratio in l1_ratio_values:
             elastic_net_reg = ElasticNet(
@@ -480,7 +493,7 @@ def find_parameters_and_compare_models(y_train: np.array, u_train: np.array) -> 
     print("---------------------------")
     print("Using " + Fore.YELLOW + "ElasticNet Regression" + Fore.RESET + ":")
     print(f"\tBest parameters:")
-    print(f"\t\tn = {best_params_elastic_net[0]} \n\t\tm = {best_params_elastic_net[1]} \n\t\td = {best_params_elastic_net[2]} \n\t\tlambda = {best_params_elastic_net[3]} \n\t\tL1 ratio = {best_params_elastic_net[4]}")
+    print(f"\t\tn = {best_params_elastic_net[0]} \n\t\tm = {best_params_elastic_net[1]} \n\t\td = {best_params_elastic_net[2]} \n\t\tlambda = {best_params_elastic_net[3]} \n\t\tl1_ratio = {best_params_elastic_net[4]}")
     print(f"\tPrediction score (SSE) = {best_score_elastic_net}")
 
 
@@ -541,9 +554,9 @@ def chosen_model_with_best_parameters(y_train: np.array, u_train: np.array, best
     Returns:
     model_reg: The trained Ridge Regression model.
     """
-    n, m, d, alpha = best_params  # Unpack the best parameters for the regression model
+    n, m, d, alpha = best_params  # Unpack the best parameters
 
-    # Create the regression matrix from the training data
+    # Create the regression matrix
     X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=m, d=d)
 
     # Split the data into training and validation sets
@@ -560,7 +573,7 @@ def chosen_model_with_best_parameters(y_train: np.array, u_train: np.array, best
         fit_intercept=True
     ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
 
-    # Predict the target values for the validation set
+    # Predict the target values
     y_pred = model_reg.predict(X=X_val_matrix_split)
 
     # Calculate the prediction score using SSE
@@ -577,37 +590,51 @@ def chosen_model_with_best_parameters(y_train: np.array, u_train: np.array, best
 
 
 def main():
+    """
+    Main function to execute the workflow for training and evaluating the model.
+    """
     # Load the data
     u_test = load_data(
         filename=get_absolute_path("u_test.npy")
-    )  # Test data for the model
+    )  # Test input data for the model
     y_train = load_data(
         filename=get_absolute_path("output_train.npy")
     )  # Expected output for the training data
     u_train = load_data(
         filename=get_absolute_path("u_train.npy")
-    )  # Input data for the training
+    )  # Train input data for the model
 
+    # # Plot the training input and output
+    # plot_u_and_y(y=y_train, u=u_train, train=True)
+
+    # # Find the best parameters for different regression models
     # find_parameters_and_compare_models(y_train=y_train, u_train=u_train)
 
-    # BEST PARAMETERS
+    ##########################
+    # BEST PARAMETERS OBTAINED
+    ##########################
     BEST_N=9
     BEST_M=9
     BEST_D=6
-    BEST_ALPHA=1e-05
+    BEST_ALPHA=1e-05 # Best lambda for Ridge
     best_params = (BEST_N, BEST_M, BEST_D, BEST_ALPHA)
 
-    # plot_u_and_y(y=y_train, u=u_train)
-
+    # # Plot the SSE and selected parameters
     # plot_sse_and_parameters(y_train=y_train, u_train=u_train, best_params=best_params)
 
+    # Train the chosen regression model with the best parameters
     model_reg = chosen_model_with_best_parameters(y_train=y_train, u_train=u_train, best_params=best_params)
 
+    # Use the trained model to predict the output for the test input using recursive prediction
     y_pred = recursive_predict(y_train, u_test, model=model_reg, best_params=best_params)
+
+    # # Plot the predicted test output and input
+    # plot_u_and_y(y=y_pred, u=u_test, train=False)
 
     # Output the last 400 elements of the predicted y_test
     y_pred_last_400 = y_pred[-400:]  # From index 110 to 509 in the test data
-    save_npy_to_output("y_pred", y_pred_last_400)
+    print("Shape of the predicted output =", y_pred_last_400.shape)
+    save_npy_to_output(file_name="y_pred", data=y_pred_last_400)
 
 
 if __name__ == "__main__":
