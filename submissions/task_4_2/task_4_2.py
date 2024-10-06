@@ -577,48 +577,20 @@ def chosen_model_with_best_parameters(y_train: np.array, u_train: np.array, best
     # Create the regression matrix
     X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=m, d=d)
 
-    # Split the data into training and validation sets
-    X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
-        X_train_matrix, 
-        y_train_matrix, 
-        test_size=0.2, 
-        shuffle=False
-    )
-
     # Ridge Regression model
     model_reg = Lasso(
         alpha=alpha, 
         fit_intercept=True,
         max_iter=20000
-    ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
-
-    # Predict the target values
-    y_pred = model_reg.predict(X=X_val_matrix_split)
-
-    # Calculate the prediction score using SSE
-    score = compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred)
-    score_r2 = r2_score(y_pred=y_pred, y_true=y_val_matrix_split)
+    ).fit(X=X_train_matrix, y=y_train_matrix)
 
     # Print the results for the Lasso Regression model
     print("---------------------------")
     print("Using " + Fore.YELLOW + "Lasso Regression" + Fore.RESET + ":")
     print(f"\tBest parameters:")
     print(f"\t\tn = {best_params[0]} \n\t\tm = {best_params[1]} \n\t\td = {best_params[2]} \n\t\tlambda = {best_params[3]}")
-    print(f"\tPrediction score (SSE) = {score}")
-    print(f"\tPrediction score (R²) = {score_r2}")
-
-    # # Plot y against their indices
-    # plt.figure()
-    # plt.plot(y_val_matrix_split, label="Validation", marker='o')
-    # plt.plot(y_pred, label="Prediction", marker='x')
-
-    # # Add plot details
-    # plt.xlabel('Index')
-    # plt.ylabel('Target (y)')
-    # plt.title('Validation vs Prediction values (Indexed)')
-    # plt.legend()
-    # plt.grid(True)
-    # plt.show()
+    print(f"\tModel parameters:")
+    print(f"\t\tCofficients = {model_reg.coef_}")
 
     return model_reg
 
@@ -668,7 +640,7 @@ def main():
     # Output the last 400 elements of the predicted y_test
     y_pred_last_400 = y_pred[-400:]  # From index 110 to 509 in the test data
     print("Shape of the predicted output =", y_pred_last_400.shape)
-    np.save("y_pred.npy", y_pred)
+    np.save("y_pred.npy", y_pred_last_400)
     # save_npy_to_output(file_name="y_pred", data=y_pred_last_400)
 
 
