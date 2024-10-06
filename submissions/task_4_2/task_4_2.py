@@ -629,13 +629,13 @@ def main():
     """
     # Load the data
     u_test = load_data(
-        filename=get_absolute_path("u_test.npy")
+        filename="u_test.npy"
     )  # Test input data for the model
     y_train = load_data(
-        filename=get_absolute_path("output_train.npy")
+        filename="output_train.npy"
     )  # Expected output for the training data
     u_train = load_data(
-        filename=get_absolute_path("u_train.npy")
+        filename="u_train.npy"
     )  # Train input data for the model
 
     # # Plot the training input and output
@@ -668,7 +668,8 @@ def main():
     # Output the last 400 elements of the predicted y_test
     y_pred_last_400 = y_pred[-400:]  # From index 110 to 509 in the test data
     print("Shape of the predicted output =", y_pred_last_400.shape)
-    save_npy_to_output(file_name="y_pred", data=y_pred_last_400)
+    np.save("y_pred.npy", y_pred)
+    # save_npy_to_output(file_name="y_pred", data=y_pred_last_400)
 
 
 if __name__ == "__main__":
