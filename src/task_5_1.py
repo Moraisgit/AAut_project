@@ -14,7 +14,7 @@ from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNor
 from keras.optimizers import Adam
 from tensorflow_addons.metrics import F1Score
 from keras.callbacks import EarlyStopping
-
+import keras_tuner
 
 def load_all_data():
     """
@@ -275,10 +275,10 @@ def knn_model(X_train, y_train, X_val, y_val):
         
         # Evaluate on validation set
         y_val_pred = knn.predict(X_val)
-        current_f1_score = f1_score(y_val, y_val_pred)
-        # print(y_val, y_val_pred)
+        current_f1_score = f1_score(y_true=y_val, y_pred=y_val_pred)
+        print(y_val, y_val_pred)
 
-        # print(current_f1_score)
+        print(current_f1_score)
         
         if current_f1_score > best_f1_score:
             best_f1_score = current_f1_score
@@ -287,6 +287,90 @@ def knn_model(X_train, y_train, X_val, y_val):
     print("---------------------------")
     print("Using " + Fore.YELLOW + "K-Nearest Neighbours (k-NN)" + Fore.RESET + ":")
     print(f"\tBest k = {best_k}\n\tF1 score = {best_f1_score:.4f}")
+
+
+def build_cnn_tuner(hp):
+    INPUT_SHAPE = (48, 48, 1)
+
+    model = Sequential([
+        # Layer 1: Convolutional Layer (Conv2D)
+        Conv2D(
+            filters=hp.Int('conv1_filters', min_value=32, max_value=64, step=16), 
+            kernel_size=(3, 3), activation='relu', input_shape=INPUT_SHAPE
+        ),
+        BatchNormalization(),
+        MaxPooling2D(pool_size=(2, 2)),
+
+        # Layer 2: Convolutional Layer (Conv2D)
+        Conv2D(
+            filters=hp.Int('conv2_filters', min_value=64, max_value=128, step=32), 
+            kernel_size=(3, 3), activation='relu'
+        ),
+        BatchNormalization(),
+        MaxPooling2D(pool_size=(2, 2)),
+
+        # Layer 3: Convolutional Layer (Conv2D)
+        Conv2D(
+            filters=hp.Int('conv3_filters', min_value=128, max_value=256, step=64), 
+            kernel_size=(3, 3), activation='relu'
+        ),
+        BatchNormalization(),
+        MaxPooling2D(pool_size=(2, 2)),
+
+        Dropout(hp.Float('dropout_rate', min_value=0.2, max_value=0.5, step=0.1)),
+
+        Flatten(),
+
+        Dense(
+            units=hp.Int('dense_units', min_value=128, max_value=256, step=64), 
+            activation='relu'
+        ),
+        Dropout(hp.Float('dense_dropout_rate', min_value=0.3, max_value=0.5, step=0.1)),
+
+        # Output layer
+        Dense(1, activation='sigmoid')
+    ])
+
+    model.compile(
+        optimizer=Adam(learning_rate=hp.Choice('lr', values=np.logspace(start=-5, stop=-2, num=4).tolist())),
+        loss="binary_crossentropy",
+        metrics=['accuracy', F1Score(num_classes=2, average="micro")]
+    )
+
+    return model
+
+
+def cnn_tuner(X_train, y_train, X_val, y_val):
+    # Reshape the input data to add the channel dimension
+    X_train = X_train.reshape(X_train.shape[0], 48, 48, 1)  # Shape: (num_samples, 48, 48, 1)
+    X_val = X_val.reshape(X_val.shape[0], 48, 48, 1)        # Shape: (num_samples, 48, 48, 1)
+
+    # Define callbacks
+    callbacks = [
+        EarlyStopping(
+            monitor="val_loss",
+            patience=10,
+            verbose=1,
+            mode="auto",
+            restore_best_weights=True,
+        )
+    ]
+    tuner = keras_tuner.Hyperband(
+        build_cnn_tuner,
+        objective=keras_tuner.Objective(name="val_f1_score", direction="max"),
+        max_retries_per_trial=2,
+        overwrite=True,
+        directory='my_dir',
+        project_name='cnn_tuning_hyperband'
+    )
+    tuner.search_space_summary()
+    tuner.search(
+        X_train, y_train,
+        epochs=10,  # You can set this based on your training duration
+        validation_data=(X_val, y_val),
+        callbacks=callbacks
+    )
+    best_hps = tuner.get_best_hyperparameters(num_trials=1)
 
 
 def build_cnn():
@@ -422,6 +506,7 @@ def plot_cnn_history(history):
 
 def main():
     X_train, y_train, X_train_extra, X_test = load_all_data()
+    print(X_train.shape, y_train.shape)
 
     ##########################
     # Inspect original dataset
@@ -445,6 +530,7 @@ def main():
     X_oversampled, y_oversampled = oversample_dataset(X=X_train, y=y_train, smote=True)
     # plot_oversample_images(X=X_oversampled, y=y_oversampled, len_prior_oversample=len_imbalanced, num_images=30)
     # print(X_oversampled.shape, y_oversampled.shape)
+    # print(X_oversampled, y_oversampled)
 
     """
     Oversample using ImageDataGenerator
@@ -458,6 +544,7 @@ def main():
     """
     # X_oversampled, y_oversampled = oversample_dataset(X=X_train, y=y_train, manual_flips=True)
     # # print(X_oversampled.shape, y_oversampled.shape)
+    # # print(X_oversampled, y_oversampled)
 
     """
     Oversample using RandomOverSampler
@@ -480,7 +567,7 @@ def main():
     )
     # get_imbalance(y=y_train_split, do_print=True)
     # get_imbalance(y=y_val_split, do_print=True)
-    # print(X_train_split.shape, y_train_split.shape)
+    # print(X_train_split, y_train_split)
 
     ###################
     # Classifier models
@@ -488,20 +575,27 @@ def main():
     """
     K-Nearest Neighbours (K-NN)
     """
-    # knn_model(X_train=X_train_split, y_train=y_train_split, X_val=X_test_split, y_val=y_test_split)
+    # knn_model(X_train=X_train_split, y_train=y_train_split, X_val=X_val_split, y_val=y_val_split)
 
     """
     Convolutional Neural Network (CNN)
     """
-    cnn = build_cnn()
-    history = cnn_model(
-        X_train=X_train_split, 
-        y_train=y_train_split, 
-        X_val=X_val_split,
-        y_val=y_val_split,
-        model=cnn
-    )
-    plot_cnn_history(history=history)
+    # cnn_tuner(
+    #     X_train=X_train_split, 
+    #     y_train=y_train_split, 
+    #     X_val=X_val_split, 
+    #     y_val=y_val_split
+    # )
+
+    # cnn = build_cnn()
+    # history = cnn_model(
+    #     X_train=X_train_split, 
+    #     y_train=y_train_split, 
+    #     X_val=X_val_split,
+    #     y_val=y_val_split,
+    #     model=cnn
+    # )
+    # plot_cnn_history(history=history)
 
     """
     Support Vector Machine (SVM)
