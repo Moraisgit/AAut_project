@@ -1,0 +1,4 @@
+Using Support Vector Machine (SVM):
+    Best Parameters: {'C': 10, 'gamma': 'scale', 'kernel': 'rbf'}
+    Best F1 Score (Grid Search Cross-Validation): 0.8164693099594768
+    Best F1 Score (Actual Validation Set): 0.8301369863013698
