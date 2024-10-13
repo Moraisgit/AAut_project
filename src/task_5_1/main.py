@@ -1,27 +1,33 @@
-import utils
+"""
+Main file of the program. This is the file to run by the Professor.
+"""
+
+import common
 import oversample
 from sklearn.model_selection import train_test_split
 import KNN
 import CNN
 import SVM
+from colorama import Fore
 
 
 def main():
-    X_train, y_train, X_train_extra, X_test = utils.load_all_data()
-    print(X_train.shape, y_train.shape)
+    X_train, y_train, X_train_extra, X_test = common.load_all_data()
 
     ##########################
     # Inspect original dataset
     ##########################
     len_imbalanced = len(X_train)
-    # utils.plot_dataset(X=X_train, y=y_train, num_images=20)
-    utils.get_imbalance(y=y_train, do_print = True)
+    # common.plot_dataset(X=X_train, y=y_train, num_images=20)
+    print(Fore.YELLOW + "Original Dataset" + Fore.RESET + ":")
+    common.get_imbalance(y=y_train, do_print = True)
 
     ####################
     # Normalize datasets
     ####################
     X_train = (X_train).astype('float32')/255.0
     X_test = (X_test).astype('float32')/255.0
+    X_train_extra = (X_train_extra).astype('float32')/255.0
 
     ########################
     # Take care of imbalance
@@ -38,20 +44,20 @@ def main():
     Oversample using ImageDataGenerator
     """
     # X_oversampled, y_oversampled = oversample.oversample_dataset(X=X_train, y=y_train, img_data_gen=True)
-    # oversample.plot_oversample_images(X=X_oversampled, y=y_oversampled, len_prior_oversample=len_imbalanced, num_images= 30)
-    # print(X_oversampled.shape, y_oversampled.shape)
+    # # oversample.plot_oversample_images(X=X_oversampled, y=y_oversampled, len_prior_oversample=len_imbalanced, num_images= 30)
+    # # print(X_oversampled.shape, y_oversampled.shape)
 
     # """
     # Oversample using Manual Horizontal/Vertical Flipping - NOT USED
     # """
-    # # X_oversampled, y_oversampled = oversample.oversample_dataset(X=X_train, y=y_train, manual_flips=True)
+    # X_oversampled, y_oversampled = oversample.oversample_dataset(X=X_train, y=y_train, manual_flips=True)
     # # oversample.plot_oversample_images(X=X_oversampled, y=y_oversampled, len_prior_oversample=len_imbalanced, num_images=30)
     # # print(X_oversampled.shape, y_oversampled.shape)
 
     # """
     # Oversample using RandomOverSampler - NOT USED
     # """
-    # # X_oversampled, y_oversampled = oversample.oversample_dataset(X=X_train, y=y_train, rand_over_samp=True)
+    # X_oversampled, y_oversampled = oversample.oversample_dataset(X=X_train, y=y_train, rand_over_samp=True)
     # # oversample.plot_oversample_images(X=X_oversampled, y=y_oversampled, len_prior_oversample=len_imbalanced, num_images= 30)
     # # print(X_oversampled.shape, y_oversampled.shape)
 
@@ -67,7 +73,8 @@ def main():
         random_state=42, # Ensure reproducibility
         stratify=y_oversampled # Stratify based on labels to ensure class balance
     )
-    # oversample.get_imbalance(y=y_train_split, do_print=True)
+    print("After " + Fore.YELLOW + "Training split" + Fore.RESET + ":")
+    oversample.get_imbalance(y=y_train_split, do_print=True)
     # oversample.get_imbalance(y=y_val_split, do_print=True)
 
     ###################
@@ -76,7 +83,7 @@ def main():
     # """
     # K-Nearest Neighbours (K-NN) - NOT USED
     # """
-    # # KNN.knn_model(X_train=X_train_split, y_train=y_train_split, X_val=X_val_split, y_val=y_val_split)
+    # # model = KNN.knn_model(X_train=X_train_split, y_train=y_train_split, X_val=X_val_split, y_val=y_val_split)
 
     """
     Convolutional Neural Network (CNN)
@@ -103,7 +110,25 @@ def main():
     """
     Support Vector Machine (SVM)
     """
-    SVM.do_svm_grid_search(X_train=X_train_split, y_train=y_train_split, X_val=X_val_split, y_val=y_val_split)
+    # # Tune the SVM
+    # results = SVM.do_svm_grid_search(X_train=X_train_split, y_train=y_train_split, X_val=X_val_split, y_val=y_val_split)
+    # SVM.plot_svm_history(grid_search_results=results)
+
+    # Use the previously tuned SVM model
+    model = SVM.svm_model(X_train=X_train_split, y_train=y_train_split, X_val=X_val_split, y_val=y_val_split)
+    X_train_split_extra, y_train_split_extra = SVM.svm_predict_extra(
+        model=model, 
+        X_train=X_train_split, 
+        y_train=y_train_split, 
+        X_train_extra=X_train_extra
+    )
+    model = SVM.svm_model(X_train=X_train_split_extra, y_train=y_train_split_extra, X_val=X_val_split, y_val=y_val_split)
+
+    ##################
+    # Save predictions
+    ##################
+    y_pred = model.predict(X=X_test)
+    common.save_npy_to_output(file_name="y_pred", data=y_pred)
 
 
 if __name__ == "__main__":

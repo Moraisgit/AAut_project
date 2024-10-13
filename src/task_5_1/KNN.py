@@ -26,11 +26,11 @@ def knn_model(X_train, y_train, X_val, y_val):
 
     # Iterate over k values from 1 to 100 to find the best k based on F1 score
     for k in range(1, 101):
-        knn = KNeighborsClassifier(n_neighbors=k)
-        knn.fit(X_train, y_train)  # Train k-NN on the training set
+        model = KNeighborsClassifier(n_neighbors=k)
+        model.fit(X=X_train, y=y_train)  # Train k-NN on the training set
         
         # Predict on validation set
-        y_val_pred = knn.predict(X_val)
+        y_val_pred = model.predict(X_val)
         current_f1_score = f1_score(y_true=y_val, y_pred=y_val_pred)
 
         # Print the current k and F1 score
@@ -46,5 +46,8 @@ def knn_model(X_train, y_train, X_val, y_val):
     print("---------------------------")
     print("Using " + Fore.YELLOW + "K-Nearest Neighbours (k-NN)" + Fore.RESET + ":")
     print(f"\tBest k = {best_k}\n\tF1 score = {best_f1_score:.4f}")
+
+    model = KNeighborsClassifier(n_neighbors=best_k)
+    model.fit(X=X_train, y=y_train)  # Train k-NN on the training set
     
-    return best_k, best_f1_score
+    return model

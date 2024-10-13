@@ -3,12 +3,13 @@ This module provides functions for oversampling datasets using SMOTE, ImageDataG
 and random oversampling techniques. It includes functions to apply each technique and plot synthetic images.
 """
 
-from utils import get_imbalance, plot_dataset
+from common import get_imbalance, plot_dataset
 from imblearn.over_sampling import SMOTE
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 from random import shuffle
 from imblearn.over_sampling import RandomOverSampler
+from colorama import Fore
 
 
 def plot_oversample_images(X, y, len_prior_oversample, num_images=16):
@@ -87,6 +88,7 @@ def use_smote(X, y):
         y_oversampled (ndarray): The oversampled target labels including synthetic labels.
     """
     # Print class imbalance before applying SMOTE
+    print("Before " + Fore.YELLOW + "SMOTE" + Fore.RESET + ":")
     get_imbalance(y=y, do_print=True)
 
     # Apply SMOTE to generate synthetic samples for the minority class
@@ -94,6 +96,7 @@ def use_smote(X, y):
     X_oversampled, y_oversampled = smote.fit_resample(X=X, y=y)
 
     # Print class imbalance after applying SMOTE
+    print("After " + Fore.YELLOW + "SMOTE" + Fore.RESET + ":")
     get_imbalance(y=y_oversampled, do_print=True)
 
     return X_oversampled, y_oversampled
@@ -117,6 +120,7 @@ def use_img_data_gen(X, y):
     X = X * 255  
 
     # Print the current class imbalance before augmentation
+    print("Before " + Fore.YELLOW + "ImageDataGenerator" + Fore.RESET + ":")
     get_imbalance(y=y, do_print=True)
 
     # Get the number of samples needed to balance the dataset
@@ -152,6 +156,7 @@ def use_img_data_gen(X, y):
     y_oversampled = np.hstack((y, Y_augmented))
 
     # Print the class imbalance after augmentation
+    print("After " + Fore.YELLOW + "ImageDataGenerator" + Fore.RESET + ":")
     get_imbalance(y=y_oversampled, do_print=True)
 
     return X_oversampled, y_oversampled
@@ -175,7 +180,9 @@ def use_img_data_gen(X, y):
     X = X.reshape(len(X), 48, 48)
 
     # Print class imbalance
+    print("Before " + Fore.YELLOW + "Vertical/Horizontal Flips" + Fore.RESET + ":")
     get_imbalance(y=y, do_print=True)
+
     # Calculate how many extra craters we need to balance the dataset
     oversample_size = get_imbalance(y=y, do_print=False)
 
@@ -225,6 +232,7 @@ def use_img_data_gen(X, y):
     y_oversampled = np.hstack((y, np.zeros(len(augmented_no_craters))))
 
     # Print class imbalance
+    print("After " + Fore.YELLOW + "Vertical/Horizontal Flips" + Fore.RESET + ":")
     get_imbalance(y=y_oversampled, do_print=True)
 
     return X_oversampled, y_oversampled
@@ -243,7 +251,15 @@ def use_img_data_gen(X, y):
         X_oversampled (ndarray): The oversampled feature matrix.
         y_oversampled (ndarray): The oversampled target labels.
     """
+    # Print class imbalance
+    print("Before " + Fore.YELLOW + "RandomOverSampler" + Fore.RESET + ":")
+    get_imbalance(y=y, do_print=True)
+
     ros = RandomOverSampler(random_state=42)
     X_oversampled, y_oversampled = ros.fit_resample(X.reshape(X.shape[0], -1), y)
+
+    # Print class imbalance
+    print("After " + Fore.YELLOW + "RandomOverSampler" + Fore.RESET + ":")
+    get_imbalance(y=y_oversampled, do_print=True)
     
     return X_oversampled, y_oversampled

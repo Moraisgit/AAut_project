@@ -1,3 +1,7 @@
+"""
+This module includes commonly used functions across other files.
+"""
+
 import numpy as np
 import os
 from colorama import init, Fore
@@ -20,8 +24,7 @@ def get_imbalance(y, do_print=True):
     total = num_no_craters + num_craters
 
     if do_print:
-        print("---------------------------")
-        print("Check imbalance:")
+        print("\tCheck imbalance:")
         print(f"\tClass 0 (No crater): {num_no_craters} ({num_no_craters / total * 100:.2f} %)")
         print(f"\tClass 1 (Crater): {num_craters} ({num_craters / total * 100:.2f} %)")
     else:

@@ -1,3 +1,7 @@
+"""
+This module implements Concurrent Neural Networks related functions.
+"""
+
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
 from keras.optimizers import Adam
