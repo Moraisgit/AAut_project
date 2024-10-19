@@ -6,6 +6,7 @@ import numpy as np
 import os
 from colorama import init, Fore
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 
 def get_imbalance(y, do_print=True):
@@ -151,3 +152,36 @@ def get_plot_save_path(image_name: str) -> str:
     os.makedirs(plots_dir, exist_ok=True)
 
     return file_path
+
+
+def split_data(X, y):
+    """
+    Splits the training data into training, validation, and test datasets.
+
+    Args:
+        X (np.ndarray): The original training data.
+        y (np.ndarray): The original training data.
+
+    Returns:
+        tuple: A tuple containing the training, validation, and test datasets.
+    """
+    # First, split off 80% for training and 20% for validation + test
+    X_train_split, X_tmp_split, y_train_split, y_tmp_split = train_test_split(
+        X, 
+        y, 
+        test_size=0.2,  # 20% for validation and test
+        shuffle=True,   # Shuffle the data
+        random_state=42, # Ensure reproducibility
+        stratify=y # Stratify based on labels to ensure class balance
+    )
+
+    # Now, split the remaining 20% into 10% validation and 10% test
+    X_val_split, X_test_split, y_val_split, y_test_split = train_test_split(
+        X_tmp_split, 
+        y_tmp_split, 
+        test_size=0.5,
+        shuffle=True,
+        random_state=42
+    )
+
+    return X_train_split, y_train_split, X_val_split, y_val_split, X_test_split, y_test_split

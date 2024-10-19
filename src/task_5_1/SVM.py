@@ -44,7 +44,7 @@ def do_svm_grid_search(X_train, y_train, X_val, y_val):
     ]
 
     # Initialize GridSearchCV with a support vector machine, grid search parameters, and scoring as F1
-    grid_search = GridSearchCV(SVC(), param_grid=param_grid, refit=True, verbose=2, scoring='f1')
+    grid_search = GridSearchCV(SVC(random_state=42), param_grid=param_grid, refit=True, verbose=2, scoring='f1')
 
     # Fit the grid search to the training data
     grid_search.fit(X=X_train, y=y_train)
@@ -57,10 +57,10 @@ def do_svm_grid_search(X_train, y_train, X_val, y_val):
 
     # Get the best estimator (SVM model) and make predictions on the validation set
     best_svm = grid_search.best_estimator_
-    y_pred = best_svm.predict(X_val)
+    y_pred = best_svm.predict(X=X_val)
 
     # Compute the F1 score for the best model on the validation set
-    f1_best = f1_score(y_val, y_pred)
+    f1_best = f1_score(y_true=y_val, y_pred=y_pred, average='macro')
     print(f"\tBest F1 Score (Actual Validation Set): {f1_best}")
 
     return grid_search.cv_results_
@@ -91,7 +91,8 @@ def svm_model(X_train, y_train, X_val, y_val):
         C=best_params['C'], 
         gamma=best_params.get('gamma', 'scale'),
         verbose=True,
-        probability=True
+        probability=True,
+        random_state=42
     )
 
     # Train the SVM model
@@ -101,13 +102,13 @@ def svm_model(X_train, y_train, X_val, y_val):
     y_pred = svm_model.predict(X=X_val)
 
     # Calculate the F1 score on the validation set
-    f1 = f1_score(y_true=y_val, y_pred=y_pred)
+    f1 = f1_score(y_true=y_val, y_pred=y_pred, average='macro')
 
     # Output the best parameters and the best F1 score
     print("---------------------------")
     print("Using " + Fore.YELLOW + "Support Vector Machine (SVM)" + Fore.RESET + ":")
     print("\tBest Parameters for SVM:", best_params)
-    print(f"\tF1 Score on Validation Set: {f1:.4f}")
+    print(f"\tF1 Score on Validation Set: {f1}")
 
     return svm_model
 

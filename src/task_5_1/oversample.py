@@ -64,9 +64,9 @@ def oversample_dataset(X, y, smote=False, img_data_gen=False, manual_flips=False
     #     # Apply manual horizontal and vertical flips for augmentation
     #     return use_manual_flips(X=X, y=y)
 
-    # elif rand_over_samp:
-    #     # Apply random oversampling
-    #     return use_rand_over_samp(X=X, y=y)
+    elif rand_over_samp:
+        # Apply random oversampling
+        return use_rand_over_samp(X=X, y=y)
     
     else:
         # Raise an error if none of the methods are selected
@@ -162,6 +162,32 @@ def use_img_data_gen(X, y):
     return X_oversampled, y_oversampled
 
 
+def use_rand_over_samp(X, y):
+    """
+    Randomly oversamples the minority class in `y` to balance the dataset by reshaping and resampling `X`.
+
+    Args:
+    X (ndarray): Input feature matrix, reshaped if needed (n_samples, height, width) or (n_samples, n_features).
+    y (ndarray): Target labels (n_samples,).
+
+    Returns:
+    tuple: 
+        X_oversampled (ndarray): The oversampled feature matrix.
+        y_oversampled (ndarray): The oversampled target labels.
+    """
+    # Print class imbalance
+    print("Before " + Fore.YELLOW + "RandomOverSampler" + Fore.RESET + ":")
+    get_imbalance(y=y, do_print=True)
+
+    ros = RandomOverSampler(random_state=42)
+    X_oversampled, y_oversampled = ros.fit_resample(X.reshape(X.shape[0], -1), y)
+
+    # Print class imbalance
+    print("After " + Fore.YELLOW + "RandomOverSampler" + Fore.RESET + ":")
+    get_imbalance(y=y_oversampled, do_print=True)
+    
+    return X_oversampled, y_oversampled
+
 # def use_manual_flips(X, y):
     """
     Manually augment the dataset by applying horizontal and vertical flips to no-crater images 
@@ -235,31 +261,4 @@ def use_img_data_gen(X, y):
     print("After " + Fore.YELLOW + "Vertical/Horizontal Flips" + Fore.RESET + ":")
     get_imbalance(y=y_oversampled, do_print=True)
 
-    return X_oversampled, y_oversampled
-
-
-# def use_rand_over_samp(X, y):
-    """
-    Randomly oversamples the minority class in `y` to balance the dataset by reshaping and resampling `X`.
-
-    Args:
-    X (ndarray): Input feature matrix, reshaped if needed (n_samples, height, width) or (n_samples, n_features).
-    y (ndarray): Target labels (n_samples,).
-
-    Returns:
-    tuple: 
-        X_oversampled (ndarray): The oversampled feature matrix.
-        y_oversampled (ndarray): The oversampled target labels.
-    """
-    # Print class imbalance
-    print("Before " + Fore.YELLOW + "RandomOverSampler" + Fore.RESET + ":")
-    get_imbalance(y=y, do_print=True)
-
-    ros = RandomOverSampler(random_state=42)
-    X_oversampled, y_oversampled = ros.fit_resample(X.reshape(X.shape[0], -1), y)
-
-    # Print class imbalance
-    print("After " + Fore.YELLOW + "RandomOverSampler" + Fore.RESET + ":")
-    get_imbalance(y=y_oversampled, do_print=True)
-    
     return X_oversampled, y_oversampled

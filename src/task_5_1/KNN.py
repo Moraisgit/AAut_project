@@ -30,8 +30,8 @@ def knn_model(X_train, y_train, X_val, y_val):
         model.fit(X=X_train, y=y_train)  # Train k-NN on the training set
         
         # Predict on validation set
-        y_val_pred = model.predict(X_val)
-        current_f1_score = f1_score(y_true=y_val, y_pred=y_val_pred)
+        y_val_pred = model.predict(X=X_val)
+        current_f1_score = f1_score(y_true=y_val, y_pred=y_val_pred, average='macro')
 
         # Print the current k and F1 score
         print(y_val, y_val_pred)
