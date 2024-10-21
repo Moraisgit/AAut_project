@@ -1,0 +1,25 @@
+Using Linear Regression:
+	Best parameters:
+		n = 9 
+		m = 9 
+		d = 6
+	Prediction score (SSE) = 6.393559137056884
+	Prediction score (R²) = 0.9995168202099883
+---------------------------
+Using Ridge Regression:
+	Best parameters:
+		n = 9 
+		m = 9 
+		d = 6 
+		lambda = 1e-05
+	Prediction score (SSE) = 6.393559259278606
+	Prediction score (R²) = 0.9995168202007517
+---------------------------
+Using Lasso Regression:
+	Best parameters:
+		n = 9 
+		m = 9 
+		d = 6 
+		lambda = 0.0001
+	Prediction score (SSE) = 6.374346950025533
+	Prediction score (R²) = 0.9995182721306317

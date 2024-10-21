@@ -523,7 +523,7 @@ def chosen_model(X_clean: np.ndarray, y_clean: np.ndarray) -> Tuple[float, np.nd
 def main() -> None:
     """
     Main function to execute the workflow for training and evaluating the model.
-    It handles loading data, removing outliers, splitting data, and fitting a regression model.
+    It handles loading data, removing outliers and fitting a regression model.
     """
     # Our output will be compared with the teachers output using SSE metric
     X_test = load_data(

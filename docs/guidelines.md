@@ -55,8 +55,74 @@ Estimate the theta parameters of the model based on Y and X
 
 The data that will be available is not the X and Y. We need to create X and Y based on the u's
 
+output at time k depends on previous inputs and outputs
+
+delay parameters are m, n, d are between 0<=m, n, d<10
+
+as an example, n=2,d=0, m=3:
+- y(3)=-a1y(2)-a2y(1)+b0u(3)+b1u(2)+b2u(1)
+- y(4)=-a1y(3)-a2y(2)+b0u(4)+b1u(3)+b2u(2)
+
+Y=X\theta
+
+y_hat needs to be size 400x1 
+
+the pred for the train can be at once beacause we have thetas but for the y_pred_test needs to be one by one, obtained iteratively
+
+# A fazer para este lab:
+
+Separar os dados de treino em treino e validação SEM CROSS-VALIDATION porque a ordem da data é importante
+
+
 # 5. Part 2 - Image Analysis
 
 ## 5.1 First Problem - Image classification
+
+to view the image 
+
+```python
+im=np.reshape(kon, (48,48))
+plt.imshow(im)
+```
+
+the extra dataset does not have labels, we should use it
+
+we need to submit labels and not probabilities output
+
+### Neural networks:
+
+- library: tensorflow, keras libraries
+
+- define NN: number of units for each layer; activation function (RELU, sigmoid, ...); specify the input form, specially in the first layer; specify a output layer - if we are doing regression then linear, if we are doing classification then sigmoid (binary classification problem - OUR CASE) or softmax (more than 2 classes)
+
+- training, speficify gradient descent
+
+- - loss function: regression (SSE); classification (binary cross entropy - binary classification which means 2 classes, categorical cross entropy which means more than 2 classes)
+
+- - optimizer: sgd; adam (USE THIS ONE); online; mini-batch; batch. Specify learning rate
+
+we have training data, split into validation
+
+standerdize/scale the input to instead of being 0 to 255, to be 0 to 1. Do this for training, validation and testing
+
+max number of iterations
+
+plot the loss function in function of the epoch number. it should look like a curvy triangle in the origin (for the training loss), the validation loss should also look like that. If the valitation loss starts to increase, it means overfitting - maybe we do not have enough training data, or simplify the model cuz it may be too complex for the training data - layers of number of units
+
+we want the best weights for the validation set, before the validation loss increases (use max iterations). callback early stopping? (specify the patience parameter), callback keepbest? (keep the best weights for the validation)
+
+`model.predict` will give probabilitie outputs, we need to use `np.argmax` to convert to labels
+
+```python
+train_images=(X).astype('float32')/255.0
+train_labels = keras.utils.to_categorical(y,2) # One hot encoding of class labels
+test_images = (X).astype('float32')/255.0
+results_MLP = np.argmax(model_MLP.predict(test_images),1)
+```
+
+### Imbalance
+
+Imbalance 90% class 1 and 10% class 0 - it will almost always predict class 1 and not class 0. To know if we took care of imbalance, we should look at f1-score and balanced accuracy
+
 
 ## 5.2 Second Problem - image segmentation
