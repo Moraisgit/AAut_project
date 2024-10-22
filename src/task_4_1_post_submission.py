@@ -637,13 +637,13 @@ def main() -> None:
     # # Plot the cleaned training data
     # plot_training_data(X_train=X_clean, individual_plots=True)
 
-    # compare_models(
-    #     X_clean=X_clean, 
-    #     y_clean=y_clean, 
-    #     X_test=X_test, 
-    #     y_train=y_train, 
-    #     inlier_mask=inlier_mask
-    # )
+    compare_models(
+        X_clean=X_clean, 
+        y_clean=y_clean, 
+        X_test=X_test, 
+        y_train=y_train, 
+        inlier_mask=inlier_mask
+    )
 
     # Get β0 and βi
     intercept, coefficients = chosen_model(X_clean=X_clean, y_clean=y_clean)
