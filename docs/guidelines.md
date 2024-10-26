@@ -126,3 +126,11 @@ Imbalance 90% class 1 and 10% class 0 - it will almost always predict class 1 an
 
 
 ## 5.2 Second Problem - image segmentation
+
+Image segmentation problem. Given some input images 48x48 grayscale we want as output a binary image 48x48 where 0 is the background and 1 is the forgound (craters). In essence classifie each pixel of the image, give a label to each individual pixel.
+
+We are given two formats of data to work with.
+
+- Fomart A: each row is one pixel and the number of features is 49. For each pixel we provide the 7x7 neighborhood. A 7x7 patch. Each block of 1764 rows corresponds to an image, 1764 < 48x48 because the outer pixels are not included as there would be no neighborhood. The y output is the label of each pixel. With the function `reconstruct_from_patches_2d` we do `(rows,(48,48))` to recreate each block in a image. Before using the function reshape to (1764,7,7).
+
+- Format B: each row is an image 48x48. The y output is the label for each pixel. We can use `extract_from_patches_2d`.
