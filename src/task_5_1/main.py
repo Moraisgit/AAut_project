@@ -35,10 +35,10 @@ def main():
     """
     Oversample using SMOTE
     """
-    # X_oversampled, y_oversampled = oversample.oversample_dataset(X=X_train, y=y_train, smote=True)
-    # # oversample.plot_oversample_images(X=X_oversampled, y=y_oversampled, len_prior_oversample=len_imbalanced, num_images=30)
-    # # print(X_oversampled.shape, y_oversampled.shape)
-    # # print(X_oversampled, y_oversampled)
+    X_oversampled, y_oversampled = oversample.oversample_dataset(X=X_train, y=y_train, smote=True)
+    # oversample.plot_oversample_images(X=X_oversampled, y=y_oversampled, len_prior_oversample=len_imbalanced, num_images=30)
+    # print(X_oversampled.shape, y_oversampled.shape)
+    # print(X_oversampled, y_oversampled)
 
     """
     Oversample using ImageDataGenerator
@@ -50,9 +50,9 @@ def main():
     """
     Oversample using RandomOverSampler
     """
-    X_oversampled, y_oversampled = oversample.oversample_dataset(X=X_train, y=y_train, rand_over_samp=True)
-    # oversample.plot_oversample_images(X=X_oversampled, y=y_oversampled, len_prior_oversample=len_imbalanced, num_images= 30)
-    # print(X_oversampled.shape, y_oversampled.shape)
+    # X_oversampled, y_oversampled = oversample.oversample_dataset(X=X_train, y=y_train, rand_over_samp=True)
+    # # oversample.plot_oversample_images(X=X_oversampled, y=y_oversampled, len_prior_oversample=len_imbalanced, num_images= 30)
+    # # print(X_oversampled.shape, y_oversampled.shape)
 
     # """
     # Oversample using Manual Horizontal/Vertical Flipping - NOT USED
