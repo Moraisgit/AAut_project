@@ -257,7 +257,7 @@ def cnn_predict_extra(model, X_train, y_train, X_train_extra):
 
 def plot_cnn_history(history):
     """
-    Plot the accuracy, loss, and F1 score over the number of epochs as separate figures.
+    Plot the accuracy, loss, and F1 score over the number of epochs as side-by-side plots with thicker axis lines.
     
     Parameters:
     history: History object returned by model.fit()
@@ -272,36 +272,52 @@ def plot_cnn_history(history):
 
     epochs = range(0, len(acc))
 
+    # Create a single figure with 1 row and 3 columns for the plots
+    plt.figure(figsize=(15,5))
+
     # Plot 1: Training and validation accuracy
-    plt.figure()
-    plt.plot(epochs, acc, label='Training')
-    plt.plot(epochs, val_acc, label='Validation')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
+    ax1 = plt.subplot(1, 3, 1)  # 1 row, 3 columns, first plot
+    ax1.plot(epochs, acc, label='Training')
+    ax1.plot(epochs, val_acc, label='Validation')
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Accuracy')
+    ax1.legend()
+    ax1.grid(True)
+
+    # Make the spines thicker
+    for spine in ax1.spines.values():
+        spine.set_linewidth(1.5)
 
     # Plot 2: Training and validation loss
-    plt.figure()
-    plt.plot(epochs, loss, label='Training')
-    plt.plot(epochs, val_loss, label='Validation')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
+    ax2 = plt.subplot(1, 3, 2)  # 1 row, 3 columns, second plot
+    ax2.plot(epochs, loss, label='Training')
+    ax2.plot(epochs, val_loss, label='Validation')
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel('Loss')
+    ax2.legend()
+    ax2.grid(True)
+
+    # Make the spines thicker
+    for spine in ax2.spines.values():
+        spine.set_linewidth(1.5)
 
     # Plot 3: Training and validation F1 Score
-    plt.figure()
-    plt.plot(epochs, f1, label='Training')
-    plt.plot(epochs, val_f1, label='Validation')
-    plt.xlabel('Epochs')
-    plt.ylabel('F1 Score')
-    plt.legend()
-    plt.grid(True)
+    ax3 = plt.subplot(1, 3, 3)  # 1 row, 3 columns, third plot
+    ax3.plot(epochs, f1, label='Training')
+    ax3.plot(epochs, val_f1, label='Validation')
+    ax3.set_xlabel('Epoch')
+    ax3.set_ylabel('F1 Score')
+    ax3.legend()
+    ax3.grid(True)
+
+    # Make the spines thicker
+    for spine in ax3.spines.values():
+        spine.set_linewidth(1.5)
+
+    # Adjust layout to prevent overlapping
     plt.tight_layout()
 
+    # Show the plots
     plt.show()
 
 

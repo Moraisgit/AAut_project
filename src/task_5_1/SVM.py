@@ -213,4 +213,5 @@ def plot_svm_history(grid_search_results):
     plt.legend()  # Add a legend to distinguish between kernels
     plt.xscale('log')  # Use logarithmic scale for C, as SVM parameters often vary across orders of magnitude
     plt.grid(True)  # Add gridlines for better readability
+    plt.tight_layout()
     plt.show()  # Display the plot

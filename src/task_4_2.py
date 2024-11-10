@@ -50,6 +50,8 @@ def plot_u_and_y(y: np.array, u: np.array, train: bool = True) -> None:
         plt.savefig(get_plot_save_path("Input_Output_test"), bbox_inches='tight')
 
     # Show the plot
+    plt.tight_layout()
+    plt.savefig(get_plot_save_path("u_y_test"), bbox_inches='tight')
     plt.show()
 
 
@@ -74,224 +76,175 @@ def plot_sse_and_parameters(y_train: np.array, u_train: np.array, best_params: l
     ##########################################
     # Make plot of SSE depending on n, m and d
     ##########################################
-    sse = []
-    combinations = []
+    # sse = []
+    # combinations = []
     
-    # Iterate over all combinations of n, m, d
-    for n, m, d in product(n_values, m_values, d_values):
-        X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=m, d=d)
+    # # Iterate over all combinations of n, m, d
+    # for n, m, d in product(n_values, m_values, d_values):
+    #     X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=m, d=d)
 
-        # Skip if the matrix is too small
-        if X_train_matrix.shape[0] < 10:
-            continue
+    #     # Skip if the matrix is too small
+    #     if X_train_matrix.shape[0] < 10:
+    #         continue
 
-        # Split data into training and validation sets
-        X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
-            X_train_matrix, 
-            y_train_matrix, 
-            test_size=0.2, 
-            shuffle=False
-        )
+    #     # Split data into training and validation sets
+    #     X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
+    #         X_train_matrix, 
+    #         y_train_matrix, 
+    #         test_size=0.2, 
+    #         shuffle=False
+    #     )
 
-        # Train the Ridge regression model
-        model_reg = Ridge(
-            alpha=BEST_ALPHA, 
-            fit_intercept=True
-        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
+    #     # Train the Ridge regression model
+    #     model_reg = Ridge(
+    #         alpha=BEST_ALPHA, 
+    #         fit_intercept=True
+    #     ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
 
-        # Make predictions on the validation set
-        y_pred = model_reg.predict(X=X_val_matrix_split)
+    #     # Make predictions on the validation set
+    #     y_pred = model_reg.predict(X=X_val_matrix_split)
 
-        # Calculate SSE and store it
-        sse.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
-        combinations.append((n, m, d))
+    #     # Calculate SSE and store it
+    #     sse.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
+    #     combinations.append((n, m, d))
 
-    # Convert combinations to arrays
-    n_values = np.array([c[0] for c in combinations])
-    m_values = np.array([c[1] for c in combinations])
-    d_values = np.array([c[2] for c in combinations])
-    sse = np.array(sse)
+    # # Convert combinations to arrays
+    # n_values = np.array([c[0] for c in combinations])
+    # m_values = np.array([c[1] for c in combinations])
+    # d_values = np.array([c[2] for c in combinations])
+    # sse = np.array(sse)
 
-    # Find the index of the minimum SSE value
-    min_sse_idx = np.argmin(sse)
+    # # Find the index of the minimum SSE value
+    # min_sse_idx = np.argmin(sse)
 
-    # Set the sizes of the points, making the minimum SSE point bigger
-    sizes = np.full_like(sse, fill_value=20)
-    sizes[min_sse_idx] = 100
+    # # Set the sizes of the points, making the minimum SSE point bigger
+    # sizes = np.full_like(sse, fill_value=20)
+    # sizes[min_sse_idx] = 100
 
-    # Plot SSE values for different combinations of n, m, and d
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    scatter = ax.scatter(n_values, m_values, d_values, c=sse, s=sizes, cmap='viridis')
+    # # Plot SSE values for different combinations of n, m, and d
+    # fig = plt.figure()
+    # ax = fig.add_subplot(projection='3d')
+    # scatter = ax.scatter(n_values, m_values, d_values, c=sse, s=sizes, cmap='viridis')
 
-    # Set axis labels and title
-    ax.set_xlabel('n')
-    ax.set_ylabel('m')
-    ax.set_zlabel('d')
-    ax.set_title('SSE for combinations of (n, m, d)')
+    # # Set axis labels and title
+    # ax.set_xlabel('n')
+    # ax.set_ylabel('m')
+    # ax.set_zlabel('d')
+    # ax.set_title('SSE for combinations of (n, m, d)')
 
-    # Set limits for each axis
-    ax.set_xlim(-0.5, 9.5)
-    ax.set_ylim(-0.5, 9.5)
-    ax.set_zlim(-0.5, 9.5)
+    # # Set limits for each axis
+    # ax.set_xlim(-0.5, 9.5)
+    # ax.set_ylim(-0.5, 9.5)
+    # ax.set_zlim(-0.5, 9.5)
 
-    # Set ticks for each axis
-    ax.set_xticks(np.arange(0, 10, 1))
-    ax.set_yticks(np.arange(0, 10, 1))
-    ax.set_zticks(np.arange(0, 10, 1))
+    # # Set ticks for each axis
+    # ax.set_xticks(np.arange(0, 10, 1))
+    # ax.set_yticks(np.arange(0, 10, 1))
+    # ax.set_zticks(np.arange(0, 10, 1))
 
-    # Add a color bar to show SSE values
-    color_bar = plt.colorbar(scatter, ax=ax)
-    color_bar.set_label('SSE')
+    # # Add a color bar to show SSE values
+    # color_bar = plt.colorbar(scatter, ax=ax)
+    # color_bar.set_label('SSE')
 
-    # Highlight the minimum SSE point
-    ax.scatter(n_values[min_sse_idx], m_values[min_sse_idx], d_values[min_sse_idx], 
-               color='red', s=150, edgecolors='black', label='Min SSE')
+    # # Highlight the minimum SSE point
+    # ax.scatter(n_values[min_sse_idx], m_values[min_sse_idx], d_values[min_sse_idx], 
+    #            color='red', s=150, edgecolors='black', label='Min SSE')
 
-    ax.legend()
-    # Adjust layout and save the plot
-    plt.tight_layout()
-    plt.savefig(get_plot_save_path("SSE_n_m_d"), bbox_inches='tight')
+    # ax.legend()
+    # # Adjust layout and save the plot
+    # plt.tight_layout()
+    # plt.show()
+    # plt.savefig(get_plot_save_path("SSE_n_m_d"), bbox_inches='tight')
 
-    #################################
-    # Make plot of SSE depending on n
-    #################################
-    sse = []
+    # Initialize subplots
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+
+    #########################
+    # Plot SSE depending on n
+    #########################
+    sse_n = []
     for n in n_values:
         X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=n, m=BEST_M, d=BEST_D)
 
-        # Skip if the matrix is too small
         if X_train_matrix.shape[0] < 10:
             continue
 
-        # Split data into training and validation sets
         X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
-            X_train_matrix, 
-            y_train_matrix, 
-            test_size=0.2, 
-            shuffle=False
-        )
+            X_train_matrix, y_train_matrix, test_size=0.2, shuffle=False)
 
-        # Train the Ridge regression model
-        model_reg = Ridge(
-            alpha=BEST_ALPHA, 
-            fit_intercept=True
-        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
-
-        # Make predictions on the validation set
+        model_reg = Ridge(alpha=BEST_ALPHA, fit_intercept=True).fit(X=X_train_matrix_split, y=y_train_matrix_split)
         y_pred = model_reg.predict(X=X_val_matrix_split)
-
-        # Calculate SSE and store it
-        sse.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
+        sse_n.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
 
     # Plot SSE vs n
-    fig, ax = plt.subplots()
+    ax[0].plot(n_values, sse_n, marker='o', linestyle='-')
+    ax[0].set_xlabel('n')
+    ax[0].set_ylabel('SSE')
+    ax[0].set_title('SSE over n (m=9, d=6)')
+    ax[0].set_xticks(n_values)  # Ensure all n values are ticks
+    ax[0].grid(True)
+    for spine in ax[0].spines.values():
+        spine.set_linewidth(1.5)
 
-    ax.plot(n_values, sse, marker='o', linestyle='-')
-    ax.set_xlabel(xlabel='n')
-    ax.set_ylabel(ylabel='SSE')
-    ax.set_title(label='SSE for different values of n (with m=9 and d=6)')
-
-    ax.set_xlim(left=-0.5, right=9.5)
-    ax.set_xticks(np.arange(0, 10, 1))
-
-    plt.tight_layout()
-    plt.savefig(get_plot_save_path("SSE_n"), bbox_inches='tight')
-
-    #################################
-    # Make plot of SSE depending on m
-    #################################
-    sse = []
+    #########################
+    # Plot SSE depending on m
+    #########################
+    sse_m = []
     for m in m_values:
         X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=BEST_N, m=m, d=BEST_D)
 
-        # Skip if the matrix is too small
         if X_train_matrix.shape[0] < 10:
             continue
 
-        # Split data into training and validation sets
         X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
-            X_train_matrix, 
-            y_train_matrix, 
-            test_size=0.2, 
-            shuffle=False
-        )
+            X_train_matrix, y_train_matrix, test_size=0.2, shuffle=False)
 
-        # Train the Ridge regression model
-        model_reg = Ridge(
-            alpha=BEST_ALPHA, 
-            fit_intercept=True
-        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
-
-        # Make predictions on the validation set
+        model_reg = Ridge(alpha=BEST_ALPHA, fit_intercept=True).fit(X=X_train_matrix_split, y=y_train_matrix_split)
         y_pred = model_reg.predict(X=X_val_matrix_split)
-
-        # Calculate SSE and store it
-        sse.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
+        sse_m.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
 
     # Plot SSE vs m
-    fig, ax = plt.subplots()
-
-    # Now plot the SSE values vs m
-    ax.plot(m_values, sse, marker='o', linestyle='-')
-    ax.set_xlabel(xlabel='m')
-    ax.set_ylabel(ylabel='SSE')
-    ax.set_title(label='SSE for different values of m (with n=9 and d=6)')
-
-    ax.set_xlim(left=-0.5, right=9.5)
-    ax.set_xticks(np.arange(0, 10, 1))
-
-    plt.tight_layout()
-    plt.savefig(get_plot_save_path("SSE_m"), bbox_inches='tight')
+    ax[1].plot(m_values, sse_m, marker='o', linestyle='-')
+    ax[1].set_xlabel('m')
+    ax[1].set_ylabel('SSE')
+    ax[1].set_title('SSE over m (n=9, d=6)')
+    ax[1].set_xticks(m_values)  # Ensure all m values are ticks
+    ax[1].grid(True)
+    for spine in ax[1].spines.values():
+        spine.set_linewidth(1.5)
 
     #################################
-    # Make plot of SSE depending on d
+    # Plot SSE depending on d
     #################################
-    sse = []
+    sse_d = []
     for d in d_values:
         X_train_matrix, y_train_matrix = regression_matrix(y=y_train, u=u_train, n=BEST_N, m=BEST_M, d=d)
 
-        # Skip if the matrix is too small
         if X_train_matrix.shape[0] < 10:
             continue
 
-        # Split data into training and validation sets
         X_train_matrix_split, X_val_matrix_split, y_train_matrix_split, y_val_matrix_split = train_test_split(
-            X_train_matrix, 
-            y_train_matrix, 
-            test_size=0.2, 
-            shuffle=False
-        )
+            X_train_matrix, y_train_matrix, test_size=0.2, shuffle=False)
 
-        # Train the Ridge regression model
-        model_reg = Ridge(
-            alpha=BEST_ALPHA, 
-            fit_intercept=True
-        ).fit(X=X_train_matrix_split, y=y_train_matrix_split)
-
-        # Make predictions on the validation set
+        model_reg = Ridge(alpha=BEST_ALPHA, fit_intercept=True).fit(X=X_train_matrix_split, y=y_train_matrix_split)
         y_pred = model_reg.predict(X=X_val_matrix_split)
-
-        # Calculate SSE and store it
-        sse.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
+        sse_d.append(compute_SEE(y_real=y_val_matrix_split, y_predicted=y_pred))
 
     # Plot SSE vs d
-    fig, ax = plt.subplots()
+    ax[2].plot(d_values, sse_d, marker='o', linestyle='-')
+    ax[2].set_xlabel('d')
+    ax[2].set_ylabel('SSE')
+    ax[2].set_title('SSE over d (n=9, m=9)')
+    ax[2].set_xticks(d_values)  # Ensure all d values are ticks
+    ax[2].grid(True)
+    for spine in ax[2].spines.values():
+        spine.set_linewidth(1.5)
 
-    # Now plot the SSE values vs d
-    ax.plot(d_values, sse, marker='o', linestyle='-')
-    ax.set_xlabel(xlabel='d')
-    ax.set_ylabel(ylabel='SSE')
-    ax.set_title(label='SSE for different values of d (with n=9 and m=9)')
-
-    ax.set_xlim(left=-0.5, right=9.5)
-    ax.set_xticks(np.arange(0, 10, 1))
-
+    # Adjust layout
     plt.tight_layout()
+    plt.savefig(get_plot_save_path("SSE_n_m_d_plots"), bbox_inches='tight')
 
-    #####################
-    # Show all made plots
-    #####################
+    # Show all plots
     plt.show()
 
 
@@ -370,9 +323,9 @@ def find_parameters_and_compare_models(y_train: np.array, u_train: np.array) -> 
     """
     
     # Define ranges for parameters and hyperparameters
-    n_values = range(0, 10, 1)
-    m_values = range(0, 10, 1)
-    d_values = range(0, 10, 1)
+    n_values = range(0, 15, 1)
+    m_values = range(0, 15, 1)
+    d_values = range(0, 15, 1)
     lambda_values = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10]
     # l1_ratio_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1]
 
